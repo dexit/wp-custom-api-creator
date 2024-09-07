@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Custom API Creator
- * Plugin URI: https://wordpress.org/plugins/custom-api-creator/
+ * Plugin URI: https://github.com/mehdiraized/wp-custom-api-creator
  * Description: Create custom APIs with flexible output and user roles.
  * Version: 1.0.0
  * Author: Mehdi Rezaei
@@ -41,15 +41,15 @@ class Custom_API_Creator
             'menu_name' => _x('Custom APIs', 'admin menu', 'custom-api-creator'),
             'name_admin_bar' => _x('Custom API', 'add new on admin bar', 'custom-api-creator'),
             'add_new' => _x('Add New', 'custom api', 'custom-api-creator'),
-            'add_new_item' => __('Add New Custom API', 'custom-api-creator'),
-            'new_item' => __('New Custom API', 'custom-api-creator'),
-            'edit_item' => __('Edit Custom API', 'custom-api-creator'),
-            'view_item' => __('View Custom API', 'custom-api-creator'),
-            'all_items' => __('All Custom APIs', 'custom-api-creator'),
-            'search_items' => __('Search Custom APIs', 'custom-api-creator'),
-            'parent_item_colon' => __('Parent Custom APIs:', 'custom-api-creator'),
-            'not_found' => __('No custom apis found.', 'custom-api-creator'),
-            'not_found_in_trash' => __('No custom apis found in Trash.', 'custom-api-creator')
+            'add_new_item' => __('Add New API', 'custom-api-creator'),
+            'new_item' => __('New API', 'custom-api-creator'),
+            'edit_item' => __('Edit API', 'custom-api-creator'),
+            'view_item' => __('View API', 'custom-api-creator'),
+            'all_items' => __('All APIs', 'custom-api-creator'),
+            'search_items' => __('Search API', 'custom-api-creator'),
+            'parent_item_colon' => __('Parent APIs:', 'custom-api-creator'),
+            'not_found' => __('No apis found.', 'custom-api-creator'),
+            'not_found_in_trash' => __('No apis found in Trash.', 'custom-api-creator')
         );
 
         $args = array(
