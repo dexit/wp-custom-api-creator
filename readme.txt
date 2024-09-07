@@ -9,7 +9,7 @@ Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Build Custom Api endpoint with Custom Response with post type, etc.
+Custom API Creator is a WordPress plugin that lets developers create flexible, secure REST API endpoints, customize data, and control access with role restrictions.
 
 
 == Description ==
