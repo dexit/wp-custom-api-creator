@@ -129,15 +129,16 @@ class Custom_API_Creator
         ?>
         <table class="form-table">
             <tr>
-                <th scope="row"><label for="custom_api_endpoint"><?php _e('API Endpoint', 'custom-api-creator'); ?></label></th>
+                <th scope="row"><label
+                        for="custom_api_endpoint"><?php esc_html_e('API Endpoint', 'custom-api-creator'); ?></label></th>
                 <td>
                     <input type="text" id="custom_api_endpoint" name="custom_api_endpoint"
                         value="<?php echo esc_attr($endpoint); ?>" class="regular-text" required>
-                    <p class="description"><?php _e('Example: my-custom-api/[parameter]', 'custom-api-creator'); ?></p>
+                    <p class="description"><?php esc_html_e('Example: my-custom-api/[parameter]', 'custom-api-creator'); ?></p>
                 </td>
             </tr>
             <tr>
-                <th scope="row"><?php _e('API Sections', 'custom-api-creator'); ?></th>
+                <th scope="row"><?php esc_html_e('API Sections', 'custom-api-creator'); ?></th>
                 <td>
                     <div id="api_sections">
                         <?php
@@ -151,28 +152,28 @@ class Custom_API_Creator
                         ?>
                     </div>
                     <button type="button" id="add_section"
-                        class="button"><?php _e('Add Section', 'custom-api-creator'); ?></button>
+                        class="button"><?php esc_html_e('Add Section', 'custom-api-creator'); ?></button>
                 </td>
             </tr>
             <tr>
-                <th scope="row"><?php _e('Access Type', 'custom-api-creator'); ?></th>
+                <th scope="row"><?php esc_html_e('Access Type', 'custom-api-creator'); ?></th>
                 <td>
                     <fieldset>
-                        <legend class="screen-reader-text"><?php _e('Access Type', 'custom-api-creator'); ?></legend>
+                        <legend class="screen-reader-text"><?php esc_html_e('Access Type', 'custom-api-creator'); ?></legend>
                         <label>
                             <input type="radio" name="custom_api_access_type" value="public" <?php checked($access_type, 'public'); ?>>
-                            <?php _e('Public', 'custom-api-creator'); ?>
+                            <?php esc_html_e('Public', 'custom-api-creator'); ?>
                         </label>
                         <br>
                         <label>
                             <input type="radio" name="custom_api_access_type" value="private" <?php checked($access_type, 'private'); ?>>
-                            <?php _e('Private', 'custom-api-creator'); ?>
+                            <?php esc_html_e('Private', 'custom-api-creator'); ?>
                         </label>
                     </fieldset>
                 </td>
             </tr>
             <tr id="custom_api_roles_row" style="<?php echo $access_type === 'private' ? '' : 'display: none;'; ?>">
-                <th scope="row"><?php _e('User Roles', 'custom-api-creator'); ?></th>
+                <th scope="row"><?php esc_html_e('User Roles', 'custom-api-creator'); ?></th>
                 <td>
                     <?php foreach ($all_roles as $role => $name):
                         $checked = in_array($role, $roles);
@@ -193,14 +194,14 @@ class Custom_API_Creator
             <h4><?php printf(__('Section %d', 'custom-api-creator'), $index + 1); ?></h4>
             <p>
                 <label>
-                    <?php _e('Property Name:', 'custom-api-creator'); ?>
+                    <?php esc_html_e('Property Name:', 'custom-api-creator'); ?>
                     <input type="text" name="custom_api_sections[<?php echo $index; ?>][name]"
                         value="<?php echo esc_attr($section['name']); ?>" class="regular-text">
                 </label>
             </p>
             <p>
                 <label>
-                    <?php _e('Post Type:', 'custom-api-creator'); ?>
+                    <?php esc_html_e('Post Type:', 'custom-api-creator'); ?>
                     <select name="custom_api_sections[<?php echo $index; ?>][post_type]" class="section-post-type">
                         <?php foreach ($post_types as $pt): ?>
                             <option value="<?php echo esc_attr($pt->name); ?>" <?php selected($section['post_type'], $pt->name); ?>>
@@ -211,7 +212,7 @@ class Custom_API_Creator
                 </label>
             </p>
             <p>
-                <label><?php _e('Fields:', 'custom-api-creator'); ?></label><br>
+                <label><?php esc_html_e('Fields:', 'custom-api-creator'); ?></label><br>
                 <?php
                 $available_fields = array('title', 'content', 'excerpt', 'categories', 'tags');
                 foreach ($available_fields as $field):
@@ -223,7 +224,7 @@ class Custom_API_Creator
                 <?php endforeach; ?>
             </p>
             <p>
-                <label><?php _e('Taxonomies:', 'custom-api-creator'); ?></label><br>
+                <label><?php esc_html_e('Taxonomies:', 'custom-api-creator'); ?></label><br>
                 <?php foreach ($all_taxonomies as $tax):
                     $checked = in_array($tax->name, $section['taxonomies']);
                     ?>
@@ -233,7 +234,8 @@ class Custom_API_Creator
                 <?php endforeach; ?>
             </p>
             <?php if ($index > 0): ?>
-                <button type="button" class="button remove-section"><?php _e('Remove Section', 'custom-api-creator'); ?></button>
+                <button type="button"
+                    class="button remove-section"><?php esc_html_e('Remove Section', 'custom-api-creator'); ?></button>
             <?php endif; ?>
         </div>
         <?php
