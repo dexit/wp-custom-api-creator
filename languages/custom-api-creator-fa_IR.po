@@ -1,0 +1,91 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: custom-api-creator\n"
+"Language: fa_IR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Custom APIs"
+msgstr "API های سفارشی"
+
+msgid "Custom API"
+msgstr "API سفارشی"
+
+msgid "Add New"
+msgstr "افزودن جدید"
+
+msgid "Add New API"
+msgstr "افزودن API جدید"
+
+msgid "New API"
+msgstr "API جدید"
+
+msgid "Edit API"
+msgstr "ویرایش API"
+
+msgid "View API"
+msgstr "مشاهده API"
+
+msgid "All APIs"
+msgstr "همه API ها"
+
+msgid "Search API"
+msgstr "جستجوی API"
+
+msgid "Parent APIs:"
+msgstr "API های والد:"
+
+msgid "No apis found."
+msgstr "هیچ API یافت نشد."
+
+msgid "No apis found in Trash."
+msgstr "هیچ API در زباله‌دان یافت نشد."
+
+msgid "API Endpoint"
+msgstr "پایان‌نقطه API"
+
+msgid "Example: my-custom-api/[parameter]"
+msgstr "مثال: my-custom-api/[پارامتر]"
+
+msgid "API Sections"
+msgstr "بخش‌های API"
+
+msgid "Add Section"
+msgstr "افزودن بخش"
+
+msgid "Access Type"
+msgstr "نوع دسترسی"
+
+msgid "Public"
+msgstr "عمومی"
+
+msgid "Private"
+msgstr "خصوصی"
+
+msgid "User Roles"
+msgstr "نقش‌های کاربری"
+
+msgid "Property Name:"
+msgstr "نام ویژگی:"
+
+msgid "Post Type:"
+msgstr "نوع پست:"
+
+msgid "Fields:"
+msgstr "فیلدها:"
+
+msgid "Taxonomies:"
+msgstr "طبقه‌بندی‌ها:"
+
+msgid "Remove Section"
+msgstr "حذف بخش"
+
+msgid "Endpoint"
+msgstr "پایان‌نقطه"
+
+msgid "Permission"
+msgstr "دسترسی"
+
+msgid "No roles specified"
+msgstr "هیچ نقشی مشخص نشده است"
