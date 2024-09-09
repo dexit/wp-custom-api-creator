@@ -1,0 +1,91 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: custom-api-creator\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Custom APIs"
+msgstr "自定义 API"
+
+msgid "Custom API"
+msgstr "自定义 API"
+
+msgid "Add New"
+msgstr "新增"
+
+msgid "Add New API"
+msgstr "新增 API"
+
+msgid "New API"
+msgstr "新 API"
+
+msgid "Edit API"
+msgstr "编辑 API"
+
+msgid "View API"
+msgstr "查看 API"
+
+msgid "All APIs"
+msgstr "所有 API"
+
+msgid "Search API"
+msgstr "搜索 API"
+
+msgid "Parent APIs:"
+msgstr "父 API:"
+
+msgid "No apis found."
+msgstr "未找到 API。"
+
+msgid "No apis found in Trash."
+msgstr "垃圾箱中未找到 API。"
+
+msgid "API Endpoint"
+msgstr "API 端点"
+
+msgid "Example: my-custom-api/[parameter]"
+msgstr "示例: my-custom-api/[参数]"
+
+msgid "API Sections"
+msgstr "API 部分"
+
+msgid "Add Section"
+msgstr "添加部分"
+
+msgid "Access Type"
+msgstr "访问类型"
+
+msgid "Public"
+msgstr "公开"
+
+msgid "Private"
+msgstr "私有"
+
+msgid "User Roles"
+msgstr "用户角色"
+
+msgid "Property Name:"
+msgstr "属性名称:"
+
+msgid "Post Type:"
+msgstr "帖子类型:"
+
+msgid "Fields:"
+msgstr "字段:"
+
+msgid "Taxonomies:"
+msgstr "分类法:"
+
+msgid "Remove Section"
+msgstr "删除部分"
+
+msgid "Endpoint"
+msgstr "端点"
+
+msgid "Permission"
+msgstr "权限"
+
+msgid "No roles specified"
+msgstr "未指定角色"
