@@ -258,7 +258,7 @@ class Custom_API_Creator {
 
 		foreach ( $fields as $meta_key => $post_key ) {
 			if ( isset( $_POST[ $post_key ] ) ) {
-				$value = $post_key === 'custom_api_sections' ? $this->sanitize_sections( $_POST[ $post_key ] ) : $this->sanitize_array_or_string( $_POST[ $post_key ] );
+				$value = $post_key === 'custom_api_sections' ? $this->sanitize_sections( sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ) ) : $this->sanitize_array_or_string( sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ) );
 				update_post_meta( $post_id, $meta_key, $value );
 			} else {
 				delete_post_meta( $post_id, $meta_key );
