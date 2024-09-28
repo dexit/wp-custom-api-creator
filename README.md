@@ -9,7 +9,7 @@
 **License:** GPLv2 or later  
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
-Custom API Creator is a WordPress plugin that lets developers create flexible, secure REST API endpoints, customize data, and control access with role restrictions.
+Custom API Creator is a WordPress plugin that lets developers create flexible, customize data, and control access with role restrictions.
 
 ## Description
 
