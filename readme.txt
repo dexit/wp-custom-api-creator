@@ -4,7 +4,7 @@ Donate link: https://www.buymeacoffee.com/mehdiraized
 Tags: api, rest api, custom api, api builder, wp json
 Requires at least: 5.0
 Tested up to: 6.6.1
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 Requires PHP: 7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
