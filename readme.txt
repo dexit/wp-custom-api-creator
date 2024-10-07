@@ -66,6 +66,7 @@ To contribute in translating this plugin please visit: [Wordpress Translation Re
 
 == Screenshots ==
 
-1. Admin Page
+1. Custom Api Plugin Page
 2. Manage End Point Page
-3. Response Test Api
+3. Manage Private End Point Page
+4. Response Test Api
