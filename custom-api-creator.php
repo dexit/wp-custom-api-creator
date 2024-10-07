@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Custom API Creator
- * Plugin URI: https://github.com/mehdiraized/wp-custom-api-creator
+ * Plugin URI: https://wordpress.org/plugins/custom-api-creator/
  * Description: Create custom APIs with flexible output and user roles.
  * Version: 1.0.3
  * Author: Mehdi Rezaei
