@@ -13,7 +13,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Get latest code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
       - name: Run plugin check
-        uses: WordPress/plugin-check-action@v1.0.5
+        uses: WordPress/plugin-check-action@v2
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: mbstring, intl, json, xml, curl
+
+      - name: Install dependencies
+        run: composer install
+
+      - name: Run unit tests
+        run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          file: coverage.xml
+
+      - name: Check dependencies
+        run: composer outdated
+
+      - name: Check for security vulnerabilities
+        run: composer audit
