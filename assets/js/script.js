@@ -74,4 +74,29 @@ jQuery(document).ready(function ($) {
 
 	// Initialize
 	resetRemoveButtons();
+
+	// Initialize CodeMirror for the Handler Function field
+	if (typeof wp !== 'undefined' && wp.codeEditor) {
+		var editorSettings = wp.codeEditor.defaultSettings ? _.clone(wp.codeEditor.defaultSettings) : {};
+		editorSettings.codemirror = _.extend(
+			{},
+			editorSettings.codemirror,
+			{
+				mode: 'php',
+				indentUnit: 2,
+				tabSize: 2
+			}
+		);
+		var editor = wp.codeEditor.initialize($('#cac_plugin_action_function'), editorSettings);
+	}
+
+	// Event listeners for HTTP request and response configuration fields
+	$('#cac_plugin_request_config, #cac_plugin_response_config').on('change', function () {
+		try {
+			JSON.parse($(this).val());
+			$(this).removeClass('error');
+		} catch (e) {
+			$(this).addClass('error');
+		}
+	});
 });

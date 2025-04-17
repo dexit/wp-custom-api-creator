@@ -94,6 +94,8 @@ class CAC_Plugin_Class {
 		}
 
 		wp_enqueue_script( 'cac-plugin-admin', plugin_dir_url( __FILE__ ) . 'assets/js/script.js', array( 'jquery' ), '1.0', true );
+		wp_enqueue_script( 'code-editor' );
+		wp_enqueue_style( 'code-editor' );
 	}
 
 	public function add_cac_plugin_meta_boxes() {
@@ -111,18 +113,16 @@ class CAC_Plugin_Class {
 		wp_nonce_field( 'cac_plugin_meta_box', 'cac_plugin_meta_box_nonce' );
 
 		$endpoint = get_post_meta( $post->ID, '_cac_plugin_endpoint', true );
-		$sections = get_post_meta( $post->ID, '_cac_plugin_sections', true );
-		$access_type = get_post_meta( $post->ID, '_cac_plugin_access_type', true ) ?: 'public';
-		$roles = get_post_meta( $post->ID, '_cac_plugin_roles', true ) ?: array();
+		$http_methods = get_post_meta( $post->ID, '_cac_plugin_http_methods', true ) ?: array( 'GET' ); // Default to GET
+		$action_function = get_post_meta( $post->ID, '_cac_plugin_action_function', true );
+		$request_config = get_post_meta( $post->ID, '_cac_plugin_request_config', true ) ?: array();
+		$response_config = get_post_meta( $post->ID, '_cac_plugin_response_config', true ) ?: array();
+		$option_data = get_post_meta( $post->ID, '_cac_plugin_option_data', true ); // New option data
 
-		$post_types = get_post_types( array( 'public' => true ), 'objects' );
-		$all_roles = wp_roles()->get_names();
-		$all_taxonomies = get_taxonomies( array( 'public' => true ), 'objects' );
 		?>
 		<table class="form-table">
 			<tr>
-				<th scope="row"><label
-						for="cac_plugin_endpoint"><?php esc_html_e( 'API Endpoint', 'cac-plugin-creator' ); ?></label></th>
+				<th scope="row"><label for="cac_plugin_endpoint"><?php esc_html_e( 'API Endpoint', 'cac-plugin-creator' ); ?></label></th>
 				<td>
 					<input type="text" id="cac_plugin_endpoint" name="cac_plugin_endpoint"
 						value="<?php echo esc_attr( $endpoint ); ?>" class="regular-text" required>
@@ -130,108 +130,51 @@ class CAC_Plugin_Class {
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'API Sections', 'cac-plugin-creator' ); ?></th>
-				<td>
-					<div id="api_sections">
-						<?php
-						if ( ! empty( $sections ) && is_array( $sections ) ) {
-							foreach ( $sections as $index => $section ) {
-								$this->render_section_fields( $post_types, $all_taxonomies, $index, $section );
-							}
-						} else {
-							$this->render_section_fields( $post_types, $all_taxonomies, 0 );
-						}
-						?>
-					</div>
-					<button type="button" id="add_section"
-						class="button"><?php esc_html_e( 'Add Section', 'cac-plugin-creator' ); ?></button>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Access Type', 'cac-plugin-creator' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'HTTP Methods', 'cac-plugin-creator' ); ?></th>
 				<td>
 					<fieldset>
-						<legend class="screen-reader-text"><?php esc_html_e( 'Access Type', 'cac-plugin-creator' ); ?></legend>
-						<label>
-							<input type="radio" name="cac_plugin_access_type" value="public" <?php checked( $access_type, 'public' ); ?>>
-							<?php esc_html_e( 'Public', 'cac-plugin-creator' ); ?>
-						</label>
-						<br>
-						<label>
-							<input type="radio" name="cac_plugin_access_type" value="private" <?php checked( $access_type, 'private' ); ?>>
-							<?php esc_html_e( 'Private', 'cac-plugin-creator' ); ?>
-						</label>
+						<?php
+						$methods = array( 'GET', 'POST', 'PUT', 'PATCH', 'DELETE' );
+						foreach ( $methods as $method ) :
+							$checked = in_array( $method, $http_methods );
+							?>
+							<label>
+								<input type="checkbox" name="cac_plugin_http_methods[]" value="<?php echo esc_attr( $method ); ?>" <?php checked( $checked ); ?>>
+								<?php echo esc_html( $method ); ?>
+							</label><br>
+						<?php endforeach; ?>
 					</fieldset>
 				</td>
 			</tr>
-			<tr id="cac_plugin_roles_row" style="<?php echo $access_type === 'private' ? '' : 'display: none;'; ?>">
-				<th scope="row"><?php esc_html_e( 'User Roles', 'cac-plugin-creator' ); ?></th>
+			<tr>
+				<th scope="row"><label for="cac_plugin_action_function"><?php esc_html_e( 'Handler Function', 'cac-plugin-creator' ); ?></label></th>
 				<td>
-					<?php foreach ( $all_roles as $role => $name ) :
-						$checked = in_array( $role, $roles );
-						?>
-						<label><input type="checkbox" name="cac_plugin_roles[]" value="<?php echo esc_attr( $role ); ?>" <?php checked( $checked ); ?>> <?php echo esc_html( $name ); ?></label><br>
-					<?php endforeach; ?>
+					<textarea id="cac_plugin_action_function" name="cac_plugin_action_function" class="code-editor" rows="10" cols="50" style="width: 100%;"><?php echo esc_textarea( $action_function ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Write the handler function in PHP. Syntax highlighting is supported.', 'cac-plugin-creator' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Request Configuration', 'cac-plugin-creator' ); ?></th>
+				<td>
+					<textarea id="cac_plugin_request_config" name="cac_plugin_request_config" rows="5" cols="50" style="width: 100%;"><?php echo esc_textarea( json_encode( $request_config, JSON_PRETTY_PRINT ) ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Define the request configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Response Configuration', 'cac-plugin-creator' ); ?></th>
+				<td>
+					<textarea id="cac_plugin_response_config" name="cac_plugin_response_config" rows="5" cols="50" style="width: 100%;"><?php echo esc_textarea( json_encode( $response_config, JSON_PRETTY_PRINT ) ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Define the response configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="cac_plugin_option_data"><?php esc_html_e( 'Option Data', 'cac-plugin-creator' ); ?></label></th>
+				<td>
+					<textarea id="cac_plugin_option_data" name="cac_plugin_option_data" rows="5" class="regular-text"><?php echo esc_textarea( $option_data ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'Store additional data as an option for this API.', 'cac-plugin-creator' ); ?></p>
 				</td>
 			</tr>
 		</table>
-		<?php
-	}
-
-	private function render_section_fields( $post_types, $all_taxonomies, $index, $section = null ) {
-		$section = $section ?: array( 'name' => '1', 'post_type' => '', 'fields' => array(), 'taxonomies' => array() );
-		?>
-		<div class="api-section" data-index="<?php echo esc_attr( $index ); ?>">
-			<h4><?php printf( esc_html__( 'Section %d', 'cac-plugin-creator' ), esc_html( $index + 1 ) ); ?></h4>
-			<p>
-				<label>
-					<?php esc_html_e( 'Property Name:', 'cac-plugin-creator' ); ?>
-					<input type="text" name="cac_plugin_sections[<?php echo esc_attr( $index ); ?>][name]"
-						value="<?php echo esc_attr( $section['name'] ); ?>" class="regular-text">
-				</label>
-			</p>
-			<p>
-				<label>
-					<?php esc_html_e( 'Post Type:', 'cac-plugin-creator' ); ?>
-					<select name="cac_plugin_sections[<?php echo esc_attr( $index ); ?>][post_type]" class="section-post-type">
-						<?php foreach ( $post_types as $pt ) : ?>
-							<option value="<?php echo esc_attr( $pt->name ); ?>" <?php selected( $section['post_type'], $pt->name ); ?>>
-								<?php echo esc_html( $pt->label ); ?>
-							</option>
-						<?php endforeach; ?>
-					</select>
-				</label>
-			</p>
-			<p>
-				<label><?php esc_html_e( 'Fields:', 'cac-plugin-creator' ); ?></label><br>
-				<?php
-				$available_fields = array( 'title', 'content', 'excerpt', 'categories', 'tags' );
-				foreach ( $available_fields as $field ) :
-					$checked = in_array( $field, $section['fields'] );
-					?>
-					<label>
-						<input type="checkbox" name="cac_plugin_sections[<?php echo esc_attr( $index ); ?>][fields][]"
-							value="<?php echo esc_attr( $field ); ?>" <?php checked( $checked ); ?>>
-						<?php echo esc_html( ucfirst( $field ) ); ?></label><br>
-				<?php endforeach; ?>
-			</p>
-			<p>
-				<label><?php esc_html_e( 'Taxonomies:', 'cac-plugin-creator' ); ?></label><br>
-				<?php foreach ( $all_taxonomies as $tax ) :
-					$checked = in_array( $tax->name, $section['taxonomies'] );
-					?>
-					<label>
-						<input type="checkbox" name="cac_plugin_sections[<?php echo esc_attr( $index ); ?>][taxonomies][]"
-							value="<?php echo esc_attr( $tax->name ); ?>" <?php checked( $checked ); ?>>
-						<?php echo esc_html( $tax->label ); ?>
-					</label><br>
-				<?php endforeach; ?>
-			</p>
-			<?php if ( $index > 0 ) : ?>
-				<button type="button"
-					class="button remove-section"><?php esc_html_e( 'Remove Section', 'cac-plugin-creator' ); ?></button>
-			<?php endif; ?>
-		</div>
 		<?php
 	}
 
@@ -253,42 +196,25 @@ class CAC_Plugin_Class {
 		}
 
 		$fields = array(
-			'_cac_plugin_endpoint' => 'cac_plugin_endpoint',
-			'_cac_plugin_sections' => 'cac_plugin_sections',
-			'_cac_plugin_access_type' => 'cac_plugin_access_type',
-			'_cac_plugin_roles' => 'cac_plugin_roles'
+			'_cac_plugin_endpoint'        => 'cac_plugin_endpoint',
+			'_cac_plugin_http_methods'    => 'cac_plugin_http_methods',
+			'_cac_plugin_action_function' => 'cac_plugin_action_function',
+			'_cac_plugin_request_config'  => 'cac_plugin_request_config',
+			'_cac_plugin_response_config' => 'cac_plugin_response_config',
+			'_cac_plugin_option_data'     => 'cac_plugin_option_data', // New field
 		);
 
 		foreach ( $fields as $meta_key => $post_key ) {
 			if ( isset( $_POST[ $post_key ] ) ) {
-				$value = $post_key === 'cac_plugin_sections' ? $this->sanitize_sections( $_POST[ $post_key ] ) : $this->sanitize_array_or_string( $_POST[ $post_key ] );
+				$value = is_array( $_POST[ $post_key ] ) ? array_map( 'sanitize_text_field', $_POST[ $post_key ] ) : sanitize_text_field( $_POST[ $post_key ] );
+				if ( in_array( $meta_key, array( '_cac_plugin_request_config', '_cac_plugin_response_config' ), true ) ) {
+					$value = json_decode( $value, true );
+				}
 				update_post_meta( $post_id, $meta_key, $value );
 			} else {
 				delete_post_meta( $post_id, $meta_key );
 			}
 		}
-	}
-
-	private function sanitize_sections( $sections ) {
-		$sanitized = array();
-		if ( ! is_array( $sections ) )
-			return null;
-		foreach ( $sections as $index => $section ) {
-			$sanitized[ $index ] = array(
-				'name' => sanitize_text_field( wp_unslash( $section['name'] ) ),
-				'post_type' => sanitize_text_field( wp_unslash( $section['post_type'] ) ),
-				'fields' => isset( $section['fields'] ) ? array_map( 'sanitize_text_field', wp_unslash( $section['fields'] ) ) : array(),
-				'taxonomies' => isset( $section['taxonomies'] ) ? array_map( 'sanitize_text_field', wp_unslash( $section['taxonomies'] ) ) : array()
-			);
-		}
-		return $sanitized;
-	}
-
-	private function sanitize_array_or_string( $data ) {
-		if ( is_array( $data ) ) {
-			return array_map( 'sanitize_text_field', $data );
-		}
-		return sanitize_text_field( $data );
 	}
 
 	public function register_cac_plugins() {
@@ -299,12 +225,41 @@ class CAC_Plugin_Class {
 
 		foreach ( $cac_plugins as $api ) {
 			$endpoint = get_post_meta( $api->ID, '_cac_plugin_endpoint', true );
-			$roles = get_post_meta( $api->ID, '_cac_plugin_roles', true );
+			$http_methods = get_post_meta( $api->ID, '_cac_plugin_http_methods', true );
+			$action_function = get_post_meta( $api->ID, '_cac_plugin_action_function', true );
+			$request_config = get_post_meta( $api->ID, '_cac_plugin_request_config', true );
+			$response_config = get_post_meta( $api->ID, '_cac_plugin_response_config', true );
+
+			if ( ! $http_methods || ! is_array( $http_methods ) ) {
+				$http_methods = array( 'GET' );
+			}
 
 			register_rest_route( 'cac-plugin/v1', '/' . ltrim( $endpoint, '/' ), array(
-				'methods' => 'GET',
-				'callback' => array( $this, 'handle_api_request' ),
-				'permission_callback' => function () use ($roles) {
+				'methods' => $http_methods,
+				'callback' => function ( $request ) use ( $action_function, $request_config, $response_config ) {
+					// Validate and apply request configuration
+					if ( $request_config ) {
+						foreach ( $request_config['headers'] as $header => $value ) {
+							$request->set_header( $header, $value );
+						}
+					}
+
+					// Call the handler function
+					if ( $action_function && is_callable( $action_function ) ) {
+						$response = call_user_func( $action_function, $request );
+					} else {
+						$response = array( 'message' => 'No valid handler function defined.' );
+					}
+
+					// Apply response configuration
+					if ( $response_config ) {
+						return new WP_REST_Response( $response_config['body'] ?? $response, $response_config['status'] ?? 200, $response_config['headers'] ?? array() );
+					}
+
+					return $response;
+				},
+				'permission_callback' => function () use ( $api ) {
+					$roles = get_post_meta( $api->ID, '_cac_plugin_roles', true );
 					return $this->check_api_permissions( $roles );
 				},
 			) );
@@ -474,6 +429,63 @@ class CAC_Plugin_Class {
 					}
 				}
 				break;
+		}
+	}
+
+	// Add logging functionality
+	public function log_message( $message, $level = 'info' ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			$log_message = sprintf( "[%s] [%s]: %s\n", date( 'Y-m-d H:i:s' ), strtoupper( $level ), $message );
+			error_log( $log_message );
+		}
+	}
+
+	// Save data to a transient
+	public function set_transient( $key, $data, $expiration = 3600 ) {
+		set_transient( $key, $data, $expiration );
+	}
+
+	// Retrieve data from a transient
+	public function get_transient( $key ) {
+		return get_transient( $key );
+	}
+
+	// Delete a transient
+	public function delete_transient( $key ) {
+		delete_transient( $key );
+	}
+
+	// Include JSONPath
+	use Flow\JSONPath\JSONPath;
+
+	public function extract_data_with_jsonpath( $json_data, $jsonpath_query ) {
+		// Parse JSON data
+		$data = json_decode( $json_data, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			$this->log_message( 'Invalid JSON data provided.', 'error' );
+			return null;
+		}
+
+		// Apply JSONPath query
+		$jsonpath = new JSONPath( $data );
+		return $jsonpath->find( $jsonpath_query )->data();
+	}
+
+	// Transform data
+	public function transform_data( $data, $transformation_function ) {
+		// Apply user-defined transformation function
+		return array_map( $transformation_function, $data );
+	}
+
+	// Load data (e.g., save to database)
+	public function load_data( $data, $post_type = 'post' ) {
+		foreach ( $data as $item ) {
+			// Insert or update a WordPress post
+			wp_insert_post( array(
+				'post_type'    => $post_type,
+				'post_content' => json_encode( $item ),
+				'post_status'  => 'publish',
+			) );
 		}
 	}
 }

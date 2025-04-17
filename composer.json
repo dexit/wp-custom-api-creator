@@ -1,0 +1,17 @@
+{
+    "name": "codespace/wp-custom-api-creator",
+    "autoload": {
+        "psr-4": {
+            "Codespace\\WpCustomApiCreator\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Rihards Mantejs",
+            "email": "dexit@dyc.lv"
+        }
+    ],
+    "require": {
+        "softcreatr/jsonpath": "^0.8.3"
+    }
+}
