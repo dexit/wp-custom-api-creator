@@ -99,4 +99,24 @@ jQuery(document).ready(function ($) {
 			$(this).addClass('error');
 		}
 	});
+
+	// Custom CodeMirror PHP action function code for error debugging
+	if (typeof wp !== 'undefined' && wp.codeEditor) {
+		var editorSettings = wp.codeEditor.defaultSettings ? _.clone(wp.codeEditor.defaultSettings) : {};
+		editorSettings.codemirror = _.extend(
+			{},
+			editorSettings.codemirror,
+			{
+				mode: 'php',
+				indentUnit: 2,
+				tabSize: 2,
+				lineNumbers: true,
+				matchBrackets: true,
+				autoCloseBrackets: true,
+				lint: true,
+				gutters: ["CodeMirror-lint-markers"]
+			}
+		);
+		var editor = wp.codeEditor.initialize($('#cac_plugin_action_function'), editorSettings);
+	}
 });

@@ -29,6 +29,9 @@ class CAC_Plugin_Class {
 		// custom column
 		add_filter( 'manage_cac_plugin_posts_columns', array( $this, 'add_custom_columns' ) );
 		add_action( 'manage_cac_plugin_posts_custom_column', array( $this, 'custom_column_content' ), 10, 2 );
+
+		// Register webhook receiver endpoint
+		add_action( 'rest_api_init', array( $this, 'register_webhook_receiver' ) );
 	}
 
 	public function register_custom_post_type() {
@@ -494,6 +497,50 @@ class CAC_Plugin_Class {
 				'post_status'  => 'publish',
 			) );
 		}
+	}
+
+	// Register webhook receiver endpoint
+	public function register_webhook_receiver() {
+		register_rest_route( 'cac-plugin/v1', '/webhook', array(
+			'methods' => 'POST',
+			'callback' => array( $this, 'handle_webhook_request' ),
+			'permission_callback' => '__return_true',
+		) );
+	}
+
+	// Handle webhook request
+	public function handle_webhook_request( $request ) {
+		$body = $request->get_body();
+		$headers = $request->get_headers();
+
+		// Verify the webhook signature
+		if ( ! $this->verify_webhook_signature( $body, $headers ) ) {
+			return new WP_Error( 'invalid_signature', 'Invalid webhook signature', array( 'status' => 403 ) );
+		}
+
+		// Log the webhook request
+		$this->log_webhook_request( $body, $headers );
+
+		// Process the webhook request
+		// Add your custom logic here to handle the webhook request
+
+		return new WP_REST_Response( array( 'message' => 'Webhook received and processed successfully' ), 200 );
+	}
+
+	// Verify webhook signature
+	private function verify_webhook_signature( $body, $headers ) {
+		$secret = 'your_webhook_secret'; // Replace with your actual webhook secret
+		$signature = isset( $headers['x-webhook-signature'][0] ) ? $headers['x-webhook-signature'][0] : '';
+
+		$expected_signature = hash_hmac( 'sha256', $body, $secret );
+
+		return hash_equals( $expected_signature, $signature );
+	}
+
+	// Log webhook request
+	private function log_webhook_request( $body, $headers ) {
+		$log_message = sprintf( "Webhook received:\nHeaders: %s\nBody: %s\n", print_r( $headers, true ), $body );
+		$this->log_message( $log_message, 'info' );
 	}
 }
 
