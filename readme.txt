@@ -70,3 +70,21 @@ To contribute in translating this plugin please visit: [Wordpress Translation Re
 2. Manage End Point Page
 3. Manage Private End Point Page
 4. Response Test Api
+
+== Running Unit Tests ==
+
+To run the unit tests for the Custom API Creator plugin, follow these steps:
+
+1. Ensure you have PHPUnit installed. You can install it globally using Composer:
+   ```sh
+   composer global require phpunit/phpunit
+   ```
+
+2. Navigate to the root directory of the plugin.
+
+3. Run the unit tests using the following command:
+   ```sh
+   vendor/bin/phpunit
+   ```
+
+This will execute the unit tests and display the results in your terminal.
