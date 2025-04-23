@@ -209,6 +209,10 @@ class CAC_Plugin_Class {
 				$value = is_array( $_POST[ $post_key ] ) ? array_map( 'sanitize_text_field', $_POST[ $post_key ] ) : sanitize_text_field( $_POST[ $post_key ] );
 				if ( in_array( $meta_key, array( '_cac_plugin_request_config', '_cac_plugin_response_config' ), true ) ) {
 					$value = json_decode( $value, true );
+					if (json_last_error() !== JSON_ERROR_NONE) {
+						$this->log_message('Invalid JSON data provided for ' . $meta_key, 'error');
+						continue;
+					}
 				}
 				update_post_meta( $post_id, $meta_key, $value );
 			} else {
@@ -382,6 +386,9 @@ class CAC_Plugin_Class {
 						break;
 					case 'tags':
 						$item['tags'] = wp_get_post_tags( $post->ID, array( 'fields' => 'names' ) );
+						break;
+					case 'custom_fields':
+						$item['custom_fields'] = get_post_custom( $post->ID );
 						break;
 				}
 			}
