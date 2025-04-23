@@ -88,6 +88,24 @@ While the plugin doesn't have built-in e-commerce fields, you can use it with e-
 
 We strive to keep Custom API Creator up-to-date with the latest WordPress versions and security best practices. Updates are released as needed for bug fixes, security patches, and new features.
 
+## Running Unit Tests
+
+To run the unit tests for the Custom API Creator plugin, follow these steps:
+
+1. Ensure you have PHPUnit installed. You can install it globally using Composer:
+   ```sh
+   composer global require phpunit/phpunit
+   ```
+
+2. Navigate to the root directory of the plugin.
+
+3. Run the unit tests using the following command:
+   ```sh
+   vendor/bin/phpunit
+   ```
+
+This will execute the unit tests and display the results in your terminal.
+
 ## Changelog
 
 ### 1.0.1 Stable version
