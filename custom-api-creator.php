@@ -463,7 +463,7 @@ class CAC_Plugin_Class {
 	}
 
 	// Include JSONPath
-	use Flow\JSONPath\JSONPath;
+	use SoftCreatR\JSONPath\JSONPath;
 
 	public function extract_data_with_jsonpath( $json_data, $jsonpath_query ) {
 		// Parse JSON data
