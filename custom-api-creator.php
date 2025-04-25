@@ -16,6 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
+use SoftCreatR\JSONPath\JSONPath;
+
 class CAC_Plugin_Class {
 	public function __construct() {
 		add_action( 'init', array( $this, 'register_custom_post_type' ) );
