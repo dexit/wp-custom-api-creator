@@ -166,7 +166,7 @@ class CAC_Plugin_Class {
 				<th scope="row"><?php esc_html_e( 'Response Configuration', 'cac-plugin-creator' ); ?></th>
 				<td>
 					<textarea id="cac_plugin_response_config" name="cac_plugin_response_config" rows="5" cols="50" style="width: 100%;"><?php echo esc_textarea( json_encode( $response_config, JSON_PRETTY_PRINT ) ); ?></textarea>
-					<p class="description"><?php esc_html_e( 'Define the response configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
+<p class="description"><?php esc_html_e( 'Define the response configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -243,6 +243,9 @@ class CAC_Plugin_Class {
 			register_rest_route( 'cac-plugin/v1', '/' . ltrim( $endpoint, '/' ), array(
 				'methods' => $http_methods,
 				'callback' => function ( $request ) use ( $action_function, $request_config, $response_config ) {
+					// Log the incoming request
+					$this->log_message( 'Incoming request: ' . print_r( $request->get_params(), true ), 'info' );
+
 					// Validate and apply request configuration
 					if ( $request_config ) {
 						foreach ( $request_config['headers'] as $header => $value ) {
@@ -256,6 +259,9 @@ class CAC_Plugin_Class {
 					} else {
 						$response = array( 'message' => 'No valid handler function defined.' );
 					}
+
+					// Log the response
+					$this->log_message( 'Response: ' . print_r( $response, true ), 'info' );
 
 					// Apply response configuration
 					if ( $response_config ) {
@@ -398,6 +404,7 @@ class CAC_Plugin_Class {
 		}
 		return $response;
 	}
+
 	public function add_custom_columns( $columns ) {
 		$new_columns = array();
 		foreach ( $columns as $key => $value ) {
