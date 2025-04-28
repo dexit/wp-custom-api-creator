@@ -16,8 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly
 }
 
-use SoftCreatR\JSONPath\JSONPath;
-
 class CAC_Plugin_Class {
 	public function __construct() {
 		add_action( 'init', array( $this, 'register_custom_post_type' ) );
@@ -159,14 +157,14 @@ class CAC_Plugin_Class {
 				<th scope="row"><?php esc_html_e( 'Request Configuration', 'cac-plugin-creator' ); ?></th>
 				<td>
 					<textarea id="cac_plugin_request_config" name="cac_plugin_request_config" rows="5" cols="50" style="width: 100%;"><?php echo esc_textarea( json_encode( $request_config, JSON_PRETTY_PRINT ) ); ?></textarea>
-					<p class="description"><?php esc_html_e( 'Define the request configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
+<p class="description"><?php esc_html_e( 'Define the request configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
 				</td>
 			</tr>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Response Configuration', 'cac-plugin-creator' ); ?></th>
 				<td>
 					<textarea id="cac_plugin_response_config" name="cac_plugin_response_config" rows="5" cols="50" style="width: 100%;"><?php echo esc_textarea( json_encode( $response_config, JSON_PRETTY_PRINT ) ); ?></textarea>
-<p class="description"><?php esc_html_e( 'Define the response configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Define the response configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -227,6 +225,7 @@ class CAC_Plugin_Class {
 		$cac_plugins = get_posts( array(
 			'post_type' => 'cac_plugin',
 			'posts_per_page' => -1,
+			'post_status' => 'publish',
 		) );
 
 		foreach ( $cac_plugins as $api ) {
@@ -240,32 +239,53 @@ class CAC_Plugin_Class {
 				$http_methods = array( 'GET' );
 			}
 
+			if ( empty( $endpoint ) ) {
+				continue; // Skip if no endpoint defined
+			}
+
 			register_rest_route( 'cac-plugin/v1', '/' . ltrim( $endpoint, '/' ), array(
 				'methods' => $http_methods,
-				'callback' => function ( $request ) use ( $action_function, $request_config, $response_config ) {
+				'callback' => function ( $request ) use ( $api, $action_function, $request_config, $response_config ) {
 					// Log the incoming request
-					$this->log_message( 'Incoming request: ' . print_r( $request->get_params(), true ), 'info' );
+					$this->log_message( 'Incoming request to API #' . $api->ID . ': ' . print_r( $request->get_params(), true ), 'info' );
 
 					// Validate and apply request configuration
-					if ( $request_config ) {
+					if ( $request_config && isset( $request_config['headers'] ) && is_array( $request_config['headers'] ) ) {
 						foreach ( $request_config['headers'] as $header => $value ) {
 							$request->set_header( $header, $value );
 						}
 					}
 
 					// Call the handler function
-					if ( $action_function && is_callable( $action_function ) ) {
-						$response = call_user_func( $action_function, $request );
-					} else {
-						$response = array( 'message' => 'No valid handler function defined.' );
+					$response = null;
+					try {
+						if ( $action_function ) {
+							// Create function from string
+							$handler = create_function( '$request', $action_function );
+							if ( is_callable( $handler ) ) {
+								$response = call_user_func( $handler, $request );
+							} else {
+								$response = array( 'error' => 'Handler function is not callable.' );
+								$this->log_message( 'Handler function is not callable for API #' . $api->ID, 'error' );
+							}
+						} else {
+							$response = array( 'message' => 'No handler function defined.' );
+						}
+					} catch ( Exception $e ) {
+						$response = array( 'error' => 'Exception in handler function: ' . $e->getMessage() );
+						$this->log_message( 'Exception in handler function for API #' . $api->ID . ': ' . $e->getMessage(), 'error' );
 					}
 
 					// Log the response
-					$this->log_message( 'Response: ' . print_r( $response, true ), 'info' );
+					$this->log_message( 'Response from API #' . $api->ID . ': ' . print_r( $response, true ), 'info' );
 
 					// Apply response configuration
 					if ( $response_config ) {
-						return new WP_REST_Response( $response_config['body'] ?? $response, $response_config['status'] ?? 200, $response_config['headers'] ?? array() );
+						$status = isset( $response_config['status'] ) ? $response_config['status'] : 200;
+						$headers = isset( $response_config['headers'] ) ? $response_config['headers'] : array();
+						$body = isset( $response_config['body'] ) ? $response_config['body'] : $response;
+						
+						return new WP_REST_Response( $body, $status, $headers );
 					}
 
 					return $response;
@@ -313,6 +333,7 @@ class CAC_Plugin_Class {
 		$cac_plugins = get_posts( array(
 			'post_type' => 'cac_plugin',
 			'posts_per_page' => 1,
+			'post_status' => 'publish',
 			'meta_query' => array(
 				array(
 					'key' => '_cac_plugin_endpoint',
@@ -344,6 +365,7 @@ class CAC_Plugin_Class {
 		$query_args = array(
 			'post_type' => $post_type,
 			'posts_per_page' => -1,
+			'post_status' => 'publish',
 		);
 
 		if ( ! empty( $taxonomies ) ) {
@@ -458,52 +480,50 @@ class CAC_Plugin_Class {
 
 	// Save data to a transient
 	public function set_transient( $key, $data, $expiration = 3600 ) {
-		set_transient( $key, $data, $expiration );
+		set_transient( 'cac_plugin_' . $key, $data, $expiration );
 	}
 
 	// Retrieve data from a transient
 	public function get_transient( $key ) {
-		return get_transient( $key );
+		return get_transient( 'cac_plugin_' . $key );
 	}
 
 	// Delete a transient
 	public function delete_transient( $key ) {
-		delete_transient( $key );
+		delete_transient( 'cac_plugin_' . $key );
 	}
 
-	// Include JSONPath
-	use SoftCreatR\JSONPath\JSONPath;
-
-	public function extract_data_with_jsonpath( $json_data, $jsonpath_query ) {
-		// Parse JSON data
-		$data = json_decode( $json_data, true );
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			$this->log_message( 'Invalid JSON data provided.', 'error' );
-			return null;
+	// Process data using JSONPath
+	public function process_with_jsonpath( $data, $jsonpath_query ) {
+		if ( ! class_exists( 'SoftCreatR\JSONPath\JSONPath' ) ) {
+			$this->log_message( 'JSONPath library is not available', 'error' );
+			return $data;
 		}
 
-		// Apply JSONPath query
-		$jsonpath = new JSONPath( $data );
-		return $jsonpath->find( $jsonpath_query )->data();
+		try {
+			$jsonpath = new \SoftCreatR\JSONPath\JSONPath( $data );
+			return $jsonpath->find( $jsonpath_query )->data();
+		} catch ( Exception $e ) {
+			$this->log_message( 'JSONPath error: ' . $e->getMessage(), 'error' );
+			return $data;
+		}
 	}
 
 	// Transform data
 	public function transform_data( $data, $transformation_function ) {
-		// Apply user-defined transformation function
-		return array_map( $transformation_function, $data );
-	}
-
-	// Load data (e.g., save to database)
-	public function load_data( $data, $post_type = 'post' ) {
-		foreach ( $data as $item ) {
-			// Insert or update a WordPress post
-			wp_insert_post( array(
-				'post_type'    => $post_type,
-				'post_content' => json_encode( $item ),
-				'post_status'  => 'publish',
-			) );
+		if ( ! is_callable( $transformation_function ) ) {
+			$this->log_message( 'Invalid transformation function', 'error' );
+			return $data;
+		}
+		
+		try {
+			return array_map( $transformation_function, $data );
+		} catch ( Exception $e ) {
+			$this->log_message( 'Data transformation error: ' . $e->getMessage(), 'error' );
+			return $data;
 		}
 	}
 }
 
+// Initialize the plugin
 new CAC_Plugin_Class();
