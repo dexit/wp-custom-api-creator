@@ -110,9 +110,17 @@ jQuery(document).ready(function ($) {
 		if (selectedBehavior === "old") {
 			// Implement the old behavior from the original script
 			// Add your old behavior code here
+			// Example of old behavior: alert a message
+			alert("Old behavior selected");
 		} else {
 			// Implement the new functionality
 			// Add your new functionality code here
+			// Example of new functionality: log a message to the console
+			console.log("New functionality selected");
 		}
 	});
+
+	// Initialize the dropdown with the default behavior from the settings
+	var defaultBehavior = $("#behavior_selection").data("default-behavior");
+	$("#behavior_selection").val(defaultBehavior);
 });
