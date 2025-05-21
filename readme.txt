@@ -64,6 +64,9 @@ To contribute in translating this plugin please visit: [Wordpress Translation Re
 = How often is the plugin updated? =
 * We strive to keep Custom API Creator up-to-date with the latest WordPress versions and security best practices. Updates are released as needed for bug fixes, security patches, and new features.
 
+= What is the behavior selection feature? =
+* The behavior selection feature allows you to choose between old and new behavior for your API endpoints. This can be configured in the settings and selected for each endpoint.
+
 == Screenshots ==
 
 1. Custom Api Plugin Page

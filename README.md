@@ -29,6 +29,7 @@ With Custom API Creator, you can define multiple API endpoints, each with its ow
 - **Automatic REST API Integration:** Your custom APIs are automatically integrated into the WordPress REST API system.
 - **Performance Optimized:** Efficiently retrieves and formats data to ensure fast API responses.
 - **Developer Friendly:** Clean code structure and hooks for easy customization and extension.
+- **Behavior Selection:** Choose between old and new behavior for your API endpoints.
 
 ## Installation
 
@@ -87,6 +88,10 @@ While the plugin doesn't have built-in e-commerce fields, you can use it with e-
 ### How often is the plugin updated?
 
 We strive to keep Custom API Creator up-to-date with the latest WordPress versions and security best practices. Updates are released as needed for bug fixes, security patches, and new features.
+
+### What is the behavior selection feature?
+
+The behavior selection feature allows you to choose between old and new behavior for your API endpoints. This can be configured in the settings and selected for each endpoint.
 
 ## Running Unit Tests
 
