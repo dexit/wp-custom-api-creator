@@ -108,13 +108,9 @@ We strive to keep Custom API Creator up-to-date with the latest WordPress versio
 4. Use the provided endpoint URL to configure your dynamic endpoint sender.
 5. The plugin will automatically verify the dynamic endpoint signature and log the request.
 
-### How do I configure the Codemirror PHP action function?
+### How do I use the Codemirror PHP action function?
 
-1. In your WordPress admin panel, go to "Custom API Creator" in the main menu.
-2. Click "Settings" and navigate to the "Codemirror PHP Action Function" section.
-3. Set your desired Codemirror PHP action function code for enhanced error debugging.
-4. Use the provided endpoint URL to configure your Codemirror action function sender.
-5. The plugin will automatically verify the Codemirror action function signature and log the request.
+This feature enhances the 'Handler Function' text area in the API editor with syntax highlighting, line numbers, and real-time error checking (linting) for your PHP code. This makes it easier to write and debug your handler functions directly within the WordPress admin panel. It is enabled automatically on the API editing screen, so no special configuration is required.
 
 ### How do I configure the Swagger and OpenAPI Modeler?
 
