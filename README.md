@@ -100,13 +100,11 @@ We strive to keep Custom API Creator up-to-date with the latest WordPress versio
 4. Use the provided endpoint URL to configure your webhook sender.
 5. The plugin will automatically verify the webhook signature and log the request.
 
-### How do I configure the dynamic endpoint slug?
+### How do I use a dynamic endpoint slug?
 
-1. In your WordPress admin panel, go to "Custom API Creator" in the main menu.
-2. Click "Settings" and navigate to the "Dynamic Endpoint Slug" section.
-3. Set your desired dynamic endpoint slug for flexible data handling.
-4. Use the provided endpoint URL to configure your dynamic endpoint sender.
-5. The plugin will automatically verify the dynamic endpoint signature and log the request.
+You can include dynamic parts in your endpoint URL using regular expressions, which is a standard feature of the WordPress REST API. For example: `my-api/users/(?P<id>\d+)`.
+
+The captured parameters (like `id` in the example) will be available in the `$request` object passed to your handler function, which you can access via `$request['id']`.
 
 ### How do I use the Codemirror PHP action function?
 
