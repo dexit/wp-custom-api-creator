@@ -123,6 +123,23 @@ We strive to keep Custom API Creator up-to-date with the latest WordPress versio
 3. Set your desired configuration for the Swagger and OpenAPI modeler.
 4. Use the provided endpoint URL to access the Swagger and OpenAPI documentation.
 5. The plugin will automatically generate and display the API documentation.
+## Running Unit Tests
+
+To run the unit tests for the Custom API Creator plugin, follow these steps:
+
+1. Ensure you have PHPUnit installed. You can install it globally using Composer:
+   ```sh
+   composer global require phpunit/phpunit
+   ```
+
+2. Navigate to the root directory of the plugin.
+
+3. Run the unit tests using the following command:
+   ```sh
+   vendor/bin/phpunit
+   ```
+
+This will execute the unit tests and display the results in your terminal.
 
 ## Changelog
 

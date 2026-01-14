@@ -1,547 +1,807 @@
 <?php
 /**
- * Plugin Name: Custom API Creator
- * Plugin URI: https://wordpress.org/plugins/custom-api-creator/
- * Description: Create custom APIs with flexible output and user roles.
- * Version: 1.0.4
+ * Plugin Name: Custom API Creator Pro
+ * Plugin URI: https://wordpress.org/plugins/custom-api-creator-pro/
+ * Description: Create custom API endpoints with advanced features and helper utilities.
+ * Version: 2.0.0
  * Author: Mehdi Rezaei
  * Author URI: https://mehd.ir
- * License: GPLv2 or later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: cac-plugin-creator
- * Domain Path: /languages
+ * License: GPLv3
+ * Text Domain: cac-pro
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly
+if (!defined('ABSPATH')) {
+    exit;
 }
 
-class CAC_Plugin_Class {
-	public function __construct() {
-		add_action( 'init', array( $this, 'register_custom_post_type' ) );
-		add_action( 'init', array( $this, 'load_textdomain' ) );
-		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-		add_action( 'rest_api_init', array( $this, 'register_cac_plugins' ) );
-		add_action( 'add_meta_boxes', array( $this, 'add_cac_plugin_meta_boxes' ) );
-		add_action( 'save_post', array( $this, 'save_cac_plugin_meta' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
-
-		// custom column
-		add_filter( 'manage_cac_plugin_posts_columns', array( $this, 'add_custom_columns' ) );
-		add_action( 'manage_cac_plugin_posts_custom_column', array( $this, 'custom_column_content' ), 10, 2 );
-
-		// Register webhook receiver endpoint
-		add_action( 'rest_api_init', array( $this, 'register_webhook_receiver' ) );
-	}
-
-	public function register_custom_post_type() {
-		$labels = array(
-			'name' => _x( 'Custom APIs', 'post type general name', 'cac-plugin-creator' ),
-			'singular_name' => _x( 'Custom API', 'post type singular name', 'cac-plugin-creator' ),
-			'menu_name' => _x( 'Custom APIs', 'admin menu', 'cac-plugin-creator' ),
-			'name_admin_bar' => _x( 'Custom API', 'add new on admin bar', 'cac-plugin-creator' ),
-			'add_new' => _x( 'Add New', 'custom api', 'cac-plugin-creator' ),
-			'add_new_item' => __( 'Add New API', 'cac-plugin-creator' ),
-			'new_item' => __( 'New API', 'cac-plugin-creator' ),
-			'edit_item' => __( 'Edit API', 'cac-plugin-creator' ),
-			'view_item' => __( 'View API', 'cac-plugin-creator' ),
-			'all_items' => __( 'All APIs', 'cac-plugin-creator' ),
-			'search_items' => __( 'Search API', 'cac-plugin-creator' ),
-			'parent_item_colon' => __( 'Parent APIs:', 'cac-plugin-creator' ),
-			'not_found' => __( 'No apis found.', 'cac-plugin-creator' ),
-			'not_found_in_trash' => __( 'No apis found in Trash.', 'cac-plugin-creator' )
-		);
-
-		$args = array(
-			'labels' => $labels,
-			'public' => false,
-			'publicly_queryable' => false,
-			'show_ui' => true,
-			'show_in_menu' => false,
-			'query_var' => true,
-			'rewrite' => array( 'slug' => 'cac-plugin' ),
-			'capability_type' => 'post',
-			'has_archive' => false,
-			'hierarchical' => false,
-			'menu_position' => null,
-			'supports' => array( 'title' )
-		);
-
-		register_post_type( 'cac_plugin', $args );
-	}
-
-	public function load_textdomain() {
-		load_plugin_textdomain( 'cac-plugin-creator', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
-	}
-
-	public function add_admin_menu() {
-		add_menu_page(
-			__( 'Custom API', 'cac-plugin-creator' ),
-			__( 'Custom API', 'cac-plugin-creator' ),
-			'manage_options',
-			'edit.php?post_type=cac_plugin',
-			null,
-			'dashicons-rest-api',
-			30
-		);
-	}
-
-	public function enqueue_admin_scripts( $hook ) {
-		if ( 'post.php' != $hook && 'post-new.php' != $hook ) {
-			return;
-		}
-
-		global $post;
-		if ( 'cac_plugin' !== $post->post_type ) {
-			return;
-		}
-
-		wp_enqueue_script( 'cac-plugin-admin', plugin_dir_url( __FILE__ ) . 'assets/js/script.js', array( 'jquery' ), '1.0', true );
-		wp_enqueue_script( 'code-editor' );
-		wp_enqueue_style( 'code-editor' );
-	}
-
-	public function add_cac_plugin_meta_boxes() {
-		add_meta_box(
-			'cac_plugin_details',
-			__( 'API Details', 'cac-plugin-creator' ),
-			array( $this, 'render_api_details_meta_box' ),
-			'cac_plugin',
-			'normal',
-			'high'
-		);
-	}
-
-	public function render_api_details_meta_box( $post ) {
-		wp_nonce_field( 'cac_plugin_meta_box', 'cac_plugin_meta_box_nonce' );
-
-		$endpoint = get_post_meta( $post->ID, '_cac_plugin_endpoint', true );
-		$http_methods = get_post_meta( $post->ID, '_cac_plugin_http_methods', true ) ?: array( 'GET' ); // Default to GET
-		$action_function = get_post_meta( $post->ID, '_cac_plugin_action_function', true );
-		$request_config = get_post_meta( $post->ID, '_cac_plugin_request_config', true ) ?: array();
-		$response_config = get_post_meta( $post->ID, '_cac_plugin_response_config', true ) ?: array();
-		$option_data = get_post_meta( $post->ID, '_cac_plugin_option_data', true ); // New option data
-
-		?>
-		<table class="form-table">
-			<tr>
-				<th scope="row"><label for="cac_plugin_endpoint"><?php esc_html_e( 'API Endpoint', 'cac-plugin-creator' ); ?></label></th>
-				<td>
-					<input type="text" id="cac_plugin_endpoint" name="cac_plugin_endpoint"
-						value="<?php echo esc_attr( $endpoint ); ?>" class="regular-text" required>
-					<p class="description"><?php esc_html_e( 'Example: my-cac-plugin/[parameter]', 'cac-plugin-creator' ); ?></p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'HTTP Methods', 'cac-plugin-creator' ); ?></th>
-				<td>
-					<fieldset>
-						<?php
-						$methods = array( 'GET', 'POST', 'PUT', 'PATCH', 'DELETE' );
-						foreach ( $methods as $method ) :
-							$checked = in_array( $method, $http_methods );
-							?>
-							<label>
-								<input type="checkbox" name="cac_plugin_http_methods[]" value="<?php echo esc_attr( $method ); ?>" <?php checked( $checked ); ?>>
-								<?php echo esc_html( $method ); ?>
-							</label><br>
-						<?php endforeach; ?>
-					</fieldset>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="cac_plugin_action_function"><?php esc_html_e( 'Handler Function', 'cac-plugin-creator' ); ?></label></th>
-				<td>
-					<textarea id="cac_plugin_action_function" name="cac_plugin_action_function" class="code-editor" rows="10" cols="50" style="width: 100%;"><?php echo esc_textarea( $action_function ); ?></textarea>
-					<p class="description"><?php esc_html_e( 'Write the handler function in PHP. Syntax highlighting is supported.', 'cac-plugin-creator' ); ?></p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Request Configuration', 'cac-plugin-creator' ); ?></th>
-				<td>
-					<textarea id="cac_plugin_request_config" name="cac_plugin_request_config" rows="5" cols="50" style="width: 100%;"><?php echo esc_textarea( json_encode( $request_config, JSON_PRETTY_PRINT ) ); ?></textarea>
-					<p class="description"><?php esc_html_e( 'Define the request configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Response Configuration', 'cac-plugin-creator' ); ?></th>
-				<td>
-					<textarea id="cac_plugin_response_config" name="cac_plugin_response_config" rows="5" cols="50" style="width: 100%;"><?php echo esc_textarea( json_encode( $response_config, JSON_PRETTY_PRINT ) ); ?></textarea>
-					<p class="description"><?php esc_html_e( 'Define the response configuration (headers, body, status) in JSON format.', 'cac-plugin-creator' ); ?></p>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="cac_plugin_option_data"><?php esc_html_e( 'Option Data', 'cac-plugin-creator' ); ?></label></th>
-				<td>
-					<textarea id="cac_plugin_option_data" name="cac_plugin_option_data" rows="5" class="regular-text"><?php echo esc_textarea( $option_data ); ?></textarea>
-					<p class="description"><?php esc_html_e( 'Store additional data as an option for this API.', 'cac-plugin-creator' ); ?></p>
-				</td>
-			</tr>
-		</table>
-		<?php
-	}
-
-	public function save_cac_plugin_meta( $post_id ) {
-		if ( ! isset( $_POST['cac_plugin_meta_box_nonce'] ) ) {
-			return;
-		}
-
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['cac_plugin_meta_box_nonce'] ) ), 'cac_plugin_meta_box' ) ) {
-			return;
-		}
-
-		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-			return;
-		}
-
-		if ( ! current_user_can( 'edit_post', $post_id ) ) {
-			return;
-		}
-
-		$fields = array(
-			'_cac_plugin_endpoint'        => 'cac_plugin_endpoint',
-			'_cac_plugin_http_methods'    => 'cac_plugin_http_methods',
-			'_cac_plugin_action_function' => 'cac_plugin_action_function',
-			'_cac_plugin_request_config'  => 'cac_plugin_request_config',
-			'_cac_plugin_response_config' => 'cac_plugin_response_config',
-			'_cac_plugin_option_data'     => 'cac_plugin_option_data', // New field
-		);
-
-		foreach ( $fields as $meta_key => $post_key ) {
-			if ( isset( $_POST[ $post_key ] ) ) {
-				$value = is_array( $_POST[ $post_key ] ) ? array_map( 'sanitize_text_field', $_POST[ $post_key ] ) : sanitize_text_field( $_POST[ $post_key ] );
-				if ( in_array( $meta_key, array( '_cac_plugin_request_config', '_cac_plugin_response_config' ), true ) ) {
-					$value = json_decode( $value, true );
-					if (json_last_error() !== JSON_ERROR_NONE) {
-						$this->log_message('Invalid JSON data provided for ' . $meta_key, 'error');
-						continue;
-					}
-				}
-				update_post_meta( $post_id, $meta_key, $value );
-			} else {
-				delete_post_meta( $post_id, $meta_key );
-			}
-		}
-	}
-
-	public function register_cac_plugins() {
-		$cac_plugins = get_posts( array(
-			'post_type' => 'cac_plugin',
-			'posts_per_page' => -1,
-		) );
-
-		foreach ( $cac_plugins as $api ) {
-			$endpoint = get_post_meta( $api->ID, '_cac_plugin_endpoint', true );
-			$http_methods = get_post_meta( $api->ID, '_cac_plugin_http_methods', true );
-			$action_function = get_post_meta( $api->ID, '_cac_plugin_action_function', true );
-			$request_config = get_post_meta( $api->ID, '_cac_plugin_request_config', true );
-			$response_config = get_post_meta( $api->ID, '_cac_plugin_response_config', true );
-
-			if ( ! $http_methods || ! is_array( $http_methods ) ) {
-				$http_methods = array( 'GET' );
-			}
-
-			register_rest_route( 'cac-plugin/v1', '/' . ltrim( $endpoint, '/' ), array(
-				'methods' => $http_methods,
-				'callback' => function ( $request ) use ( $action_function, $request_config, $response_config ) {
-					// Validate and apply request configuration
-					if ( $request_config ) {
-						foreach ( $request_config['headers'] as $header => $value ) {
-							$request->set_header( $header, $value );
-						}
-					}
-
-					// Call the handler function
-					if ( $action_function && is_callable( $action_function ) ) {
-						$response = call_user_func( $action_function, $request );
-					} else {
-						$response = array( 'message' => 'No valid handler function defined.' );
-					}
-
-					// Apply response configuration
-					if ( $response_config ) {
-						return new WP_REST_Response( $response_config['body'] ?? $response, $response_config['status'] ?? 200, $response_config['headers'] ?? array() );
-					}
-
-					return $response;
-				},
-				'permission_callback' => function () use ( $api ) {
-					$roles = get_post_meta( $api->ID, '_cac_plugin_roles', true );
-					return $this->check_api_permissions( $roles );
-				},
-			) );
-		}
-	}
-
-	public function handle_api_request( $request ) {
-		$params = $request->get_params();
-		$endpoint = $request->get_route();
-
-		$api_post = $this->get_api_by_endpoint( substr( $endpoint, strlen( '/cac-plugin/v1/' ) ) );
-		if ( ! $api_post ) {
-			return new WP_Error( 'invalid_api', 'Invalid API endpoint', array( 'status' => 404 ) );
-		}
-
-		$access_type = get_post_meta( $api_post->ID, '_cac_plugin_access_type', true );
-		$roles = get_post_meta( $api_post->ID, '_cac_plugin_roles', true );
-
-		if ( $access_type === 'private' && ! $this->check_api_permissions( $roles ) ) {
-			return new WP_Error( 'unauthorized', 'You do not have permission to access this API', array( 'status' => 403 ) );
-		}
-
-		$sections = get_post_meta( $api_post->ID, '_cac_plugin_sections', true );
-
-		$response = array();
-		foreach ( $sections as $section ) {
-			$section_name = ! empty( $section['name'] ) ? sanitize_title( $section['name'] ) : 'section_' . $section['post_type'];
-			$query_args = $this->build_query_args( $section['post_type'], $section['taxonomies'], $params );
-			$posts = $this->get_posts( $query_args );
-			$response[ $section_name ] = $this->format_response( $posts, $section['fields'] );
-		}
-
-		return $response;
-	}
-
-	private function get_api_by_endpoint( $endpoint ) {
-		$endpoint = str_replace( 'cac-plugin/v1/', '', $endpoint );
-
-		$cac_plugins = get_posts( array(
-			'post_type' => 'cac_plugin',
-			'posts_per_page' => 1,
-			'meta_query' => array(
-				array(
-					'key' => '_cac_plugin_endpoint',
-					'value' => $endpoint,
-					'compare' => '='
-				)
-			)
-		) );
-
-		return ! empty( $cac_plugins ) ? $cac_plugins[0] : null;
-	}
-
-	private function check_api_permissions( $allowed_roles ) {
-		if ( empty( $allowed_roles ) ) {
-			return true;
-		}
-
-		if ( ! is_user_logged_in() ) {
-			return false;
-		}
-
-		$user = wp_get_current_user();
-		$user_roles = (array) $user->roles;
-
-		return array_intersect( $allowed_roles, $user_roles );
-	}
-
-	private function build_query_args( $post_type, $taxonomies, $params ) {
-		$query_args = array(
-			'post_type' => $post_type,
-			'posts_per_page' => -1,
-		);
-
-		if ( ! empty( $taxonomies ) ) {
-			$tax_query = array();
-			foreach ( $taxonomies as $taxonomy ) {
-				if ( isset( $params[ $taxonomy ] ) ) {
-					$tax_query[] = array(
-						'taxonomy' => $taxonomy,
-						'field' => 'slug',
-						'terms' => explode( ',', $params[ $taxonomy ] ),
-					);
-				}
-			}
-			if ( ! empty( $tax_query ) ) {
-				$query_args['tax_query'] = $tax_query;
-			}
-		}
-
-		if ( isset( $params['search'] ) ) {
-			$query_args['s'] = $params['search'];
-		}
-
-		return $query_args;
-	}
-
-	private function get_posts( $query_args ) {
-		$query = new WP_Query( $query_args );
-		return $query->posts;
-	}
-
-	private function format_response( $posts, $fields ) {
-		$response = array();
-		foreach ( $posts as $post ) {
-			$item = array();
-			foreach ( $fields as $field ) {
-				switch ( $field ) {
-					case 'title':
-						$item['title'] = get_the_title( $post->ID );
-						break;
-					case 'content':
-						$item['content'] = get_the_content( null, false, $post->ID );
-						break;
-					case 'excerpt':
-						$item['excerpt'] = get_the_excerpt( $post->ID );
-						break;
-					case 'categories':
-						$item['categories'] = wp_get_post_categories( $post->ID, array( 'fields' => 'names' ) );
-						break;
-					case 'tags':
-						$item['tags'] = wp_get_post_tags( $post->ID, array( 'fields' => 'names' ) );
-						break;
-					case 'custom_fields':
-						$item['custom_fields'] = get_post_custom( $post->ID );
-						break;
-				}
-			}
-			$response[] = $item;
-		}
-		return $response;
-	}
-	public function add_custom_columns( $columns ) {
-		$new_columns = array();
-		foreach ( $columns as $key => $value ) {
-			$new_columns[ $key ] = $value;
-			if ( $key === 'title' ) {
-				$new_columns['endpoint'] = __( 'Endpoint', 'cac-plugin-creator' );
-				$new_columns['permission'] = __( 'Permission', 'cac-plugin-creator' );
-			}
-		}
-		return $new_columns;
-	}
-
-	public function custom_column_content( $column, $post_id ) {
-		switch ( $column ) {
-			case 'endpoint':
-				$endpoint = get_post_meta( $post_id, '_cac_plugin_endpoint', true );
-				if ( $endpoint ) {
-					$link = esc_url( home_url( '/wp-json/cac-plugin/v1/' . ltrim( $endpoint, '/' ) ) );
-					echo '<a href="' . $link . '" target="_blank">' . $link . "</a>";
-				} else {
-					echo esc_html( '—' );
-				}
-				break;
-
-			case 'permission':
-				$access_type = get_post_meta( $post_id, '_cac_plugin_access_type', true );
-				if ( $access_type === 'public' ) {
-					esc_html_e( 'Public', 'cac-plugin-creator' );
-				} else {
-					$roles = get_post_meta( $post_id, '_cac_plugin_roles', true );
-					if ( ! empty( $roles ) ) {
-						$role_names = array_map( function ($role) {
-							return translate_user_role( $role );
-						}, $roles );
-						echo esc_html( implode( ', ', $role_names ) );
-					} else {
-						esc_html_e( 'No roles specified', 'cac-plugin-creator' );
-					}
-				}
-				break;
-		}
-	}
-
-	// Add logging functionality
-	public function log_message( $message, $level = 'info' ) {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			$log_message = sprintf( "[%s] [%s]: %s\n", date( 'Y-m-d H:i:s' ), strtoupper( $level ), $message );
-			error_log( $log_message );
-		}
-	}
-
-	// Save data to a transient
-	public function set_transient( $key, $data, $expiration = 3600 ) {
-		set_transient( $key, $data, $expiration );
-	}
-
-	// Retrieve data from a transient
-	public function get_transient( $key ) {
-		return get_transient( $key );
-	}
-
-	// Delete a transient
-	public function delete_transient( $key ) {
-		delete_transient( $key );
-	}
-
-	// Include JSONPath
-	use Flow\JSONPath\JSONPath;
-
-	public function extract_data_with_jsonpath( $json_data, $jsonpath_query ) {
-		// Parse JSON data
-		$data = json_decode( $json_data, true );
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			$this->log_message( 'Invalid JSON data provided.', 'error' );
-			return null;
-		}
-
-		// Apply JSONPath query
-		$jsonpath = new JSONPath( $data );
-		return $jsonpath->find( $jsonpath_query )->data();
-	}
-
-	// Transform data
-	public function transform_data( $data, $transformation_function ) {
-		// Apply user-defined transformation function
-		return array_map( $transformation_function, $data );
-	}
-
-	// Load data (e.g., save to database)
-	public function load_data( $data, $post_type = 'post' ) {
-		foreach ( $data as $item ) {
-			// Insert or update a WordPress post
-			wp_insert_post( array(
-				'post_type'    => $post_type,
-				'post_content' => json_encode( $item ),
-				'post_status'  => 'publish',
-			) );
-		}
-	}
-
-	// Register webhook receiver endpoint
-	public function register_webhook_receiver() {
-		register_rest_route( 'cac-plugin/v1', '/webhook', array(
-			'methods' => 'POST',
-			'callback' => array( $this, 'handle_webhook_request' ),
-			'permission_callback' => '__return_true',
-		) );
-	}
-
-	// Handle webhook request
-	public function handle_webhook_request( $request ) {
-		$body = $request->get_body();
-		$headers = $request->get_headers();
-
-		// Verify the webhook signature
-		if ( ! $this->verify_webhook_signature( $body, $headers ) ) {
-			return new WP_Error( 'invalid_signature', 'Invalid webhook signature', array( 'status' => 403 ) );
-		}
-
-		// Log the webhook request
-		$this->log_webhook_request( $body, $headers );
-
-		// Process the webhook request
-		// Add your custom logic here to handle the webhook request
-
-		return new WP_REST_Response( array( 'message' => 'Webhook received and processed successfully' ), 200 );
-	}
-
-	// Verify webhook signature
-	private function verify_webhook_signature( $body, $headers ) {
-		$secret = 'your_webhook_secret'; // Replace with your actual webhook secret
-		$signature = isset( $headers['x-webhook-signature'][0] ) ? $headers['x-webhook-signature'][0] : '';
-
-		$expected_signature = hash_hmac( 'sha256', $body, $secret );
-
-		return hash_equals( $expected_signature, $signature );
-	}
-
-	// Log webhook request
-	private function log_webhook_request( $body, $headers ) {
-		$log_message = sprintf( "Webhook received:\nHeaders: %s\nBody: %s\n", print_r( $headers, true ), $body );
-		$this->log_message( $log_message, 'info' );
-	}
+class CAC_Plugin_Pro {
+    private static $instance;
+    private $helpers = [];
+    private $custom_functions = [];
+    private $api_cache = [];
+    private $log_path;
+    private $settings = [];
+    private $api_groups = [];
+
+    public static function get_instance() {
+        if (!self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    public function __construct() {
+        $this->log_path = WP_CONTENT_DIR . '/cac-pro-logs/';
+        
+        // Initialize core functionality
+        $this->init_hooks();
+        $this->load_helpers();
+        $this->load_settings();
+        $this->register_default_helpers();
+    }
+
+    private function init_hooks() {
+        // Core hooks
+        add_action('init', [$this, 'register_post_types']);
+        add_action('rest_api_init', [$this, 'register_api_endpoints']);
+        add_action('admin_menu', [$this, 'admin_menu']);
+        add_action('admin_enqueue_scripts', [$this, 'admin_assets']);
+        add_action('add_meta_boxes', [$this, 'add_meta_boxes']);
+        add_action('save_post', [$this, 'save_meta_boxes']);
+        
+        // Custom columns
+        add_filter('manage_cac_api_posts_columns', [$this, 'custom_columns']);
+        add_action('manage_cac_api_posts_custom_column', [$this, 'custom_column_content'], 10, 2);
+        
+        // Custom REST endpoints
+        add_action('rest_api_init', [$this, 'register_plugin_endpoints']);
+    }
+
+    public function register_post_types() {
+        // Register API endpoint post type
+        register_post_type('cac_api', [
+            'labels' => [
+                'name' => __('API Endpoints', 'cac-pro'),
+                'singular_name' => __('API Endpoint', 'cac-pro')
+            ],
+            'public' => false,
+            'show_ui' => true,
+            'show_in_menu' => false,
+            'supports' => ['title'],
+            'capability_type' => 'post',
+            'capabilities' => [
+                'create_posts' => 'manage_options'
+            ],
+            'map_meta_cap' => true
+        ]);
+
+        // Register API group taxonomy
+        register_taxonomy('cac_api_group', 'cac_api', [
+            'labels' => [
+                'name' => __('API Groups', 'cac-pro'),
+                'singular_name' => __('API Group', 'cac-pro')
+            ],
+            'public' => false,
+            'show_ui' => true,
+            'show_admin_column' => true,
+            'hierarchical' => true
+        ]);
+    }
+
+    public function admin_menu() {
+        add_menu_page(
+            __('Custom API Pro', 'cac-pro'),
+            __('Custom API Pro', 'cac-pro'),
+            'manage_options',
+            'cac-pro',
+            [$this, 'admin_page'],
+            'dashicons-rest-api',
+            80
+        );
+        
+        add_submenu_page(
+            'cac-pro',
+            __('API Endpoints', 'cac-pro'),
+            __('API Endpoints', 'cac-pro'),
+            'manage_options',
+            'edit.php?post_type=cac_api'
+        );
+        
+        add_submenu_page(
+            'cac-pro',
+            __('Add New', 'cac-pro'),
+            __('Add New', 'cac-pro'),
+            'manage_options',
+            'post-new.php?post_type=cac_api'
+        );
+        
+        add_submenu_page(
+            'cac-pro',
+            __('API Groups', 'cac-pro'),
+            __('API Groups', 'cac-pro'),
+            'manage_options',
+            'edit-tags.php?taxonomy=cac_api_group&post_type=cac_api'
+        );
+        
+        add_submenu_page(
+            'cac-pro',
+            __('Settings', 'cac-pro'),
+            __('Settings', 'cac-pro'),
+            'manage_options',
+            'cac-pro-settings',
+            [$this, 'settings_page']
+        );
+        
+        add_submenu_page(
+            'cac-pro',
+            __('Helpers', 'cac-pro'),
+            __('Helpers', 'cac-pro'),
+            'manage_options',
+            'cac-pro-helpers',
+            [$this, 'helpers_page']
+        );
+    }
+
+    public function admin_assets($hook) {
+        if ('post.php' === $hook || 'post-new.php' === $hook) {
+            $screen = get_current_screen();
+            if ('cac_api' === $screen->post_type) {
+                wp_enqueue_script('cac-pro-admin', plugin_dir_url(__FILE__) . 'assets/js/admin.js', ['jquery', 'wp-codemirror'], '1.0', true);
+                wp_enqueue_style('cac-pro-admin', plugin_dir_url(__FILE__) . 'assets/css/admin.css', [], '1.0');
+                wp_enqueue_style('wp-codemirror');
+                
+                // Localize script with helper functions
+                wp_localize_script('cac-pro-admin', 'cacPro', [
+                    'helpers' => array_keys($this->helpers),
+                    'nonce' => wp_create_nonce('cac-pro-nonce')
+                ]);
+            }
+        }
+    }
+
+    public function add_meta_boxes() {
+        add_meta_box(
+            'cac-pro-endpoint-details',
+            __('Endpoint Details', 'cac-pro'),
+            [$this, 'endpoint_details_meta_box'],
+            'cac_api',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'cac-pro-endpoint-code',
+            __('Endpoint Code', 'cac-pro'),
+            [$this, 'endpoint_code_meta_box'],
+            'cac_api',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'cac-pro-endpoint-helpers',
+            __('Helper Functions', 'cac-pro'),
+            [$this, 'helpers_meta_box'],
+            'cac_api',
+            'side',
+            'default'
+        );
+    }
+
+    public function endpoint_details_meta_box($post) {
+        wp_nonce_field('cac_pro_meta_box', 'cac_pro_meta_box_nonce');
+        
+        $endpoint = get_post_meta($post->ID, '_cac_pro_endpoint', true);
+        $methods = get_post_meta($post->ID, '_cac_pro_methods', true) ?: ['GET'];
+        $access = get_post_meta($post->ID, '_cac_pro_access', true) ?: 'public';
+        $roles = get_post_meta($post->ID, '_cac_pro_roles', true) ?: [];
+        $cache = get_post_meta($post->ID, '_cac_pro_cache', true) ?: 0;
+        $group = wp_get_post_terms($post->ID, 'cac_api_group', ['fields' => 'slugs']);
+        $group = !empty($group) ? $group[0] : '';
+        
+        include plugin_dir_path(__FILE__) . 'templates/endpoint-details.php';
+    }
+
+    public function endpoint_code_meta_box($post) {
+        $code = get_post_meta($post->ID, '_cac_pro_code', true);
+        $params = get_post_meta($post->ID, '_cac_pro_params', true) ?: [];
+        $response = get_post_meta($post->ID, '_cac_pro_response', true) ?: [];
+        
+        include plugin_dir_path(__FILE__) . 'templates/endpoint-code.php';
+    }
+
+    public function helpers_meta_box($post) {
+        include plugin_dir_path(__FILE__) . 'templates/helpers-list.php';
+    }
+
+    public function save_meta_boxes($post_id) {
+        if (!isset($_POST['cac_pro_meta_box_nonce']) || 
+            !wp_verify_nonce($_POST['cac_pro_meta_box_nonce'], 'cac_pro_meta_box')) {
+            return;
+        }
+        
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return;
+        }
+        
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+        
+        // Save endpoint details
+        if (isset($_POST['cac_pro_endpoint'])) {
+            update_post_meta($post_id, '_cac_pro_endpoint', sanitize_text_field($_POST['cac_pro_endpoint']));
+        }
+        
+        if (isset($_POST['cac_pro_methods'])) {
+            update_post_meta($post_id, '_cac_pro_methods', array_map('sanitize_text_field', $_POST['cac_pro_methods']));
+        }
+        
+        if (isset($_POST['cac_pro_access'])) {
+            update_post_meta($post_id, '_cac_pro_access', sanitize_text_field($_POST['cac_pro_access']));
+        }
+        
+        if (isset($_POST['cac_pro_roles'])) {
+            update_post_meta($post_id, '_cac_pro_roles', array_map('sanitize_text_field', $_POST['cac_pro_roles']));
+        }
+        
+        if (isset($_POST['cac_pro_cache'])) {
+            update_post_meta($original_post_id, '_cac_pro_cache', absint($_POST['cac_pro_cache']));
+        }
+        
+        if (isset($_POST['cac_pro_group'])) {
+            wp_set_post_terms($post_id, sanitize_text_field($_POST['cac_pro_group']), 'cac_api_group');
+        }
+        
+        // Save code
+        if (isset($_POST['cac_pro_code'])) {
+            update_post_meta($post_id, '_cac_pro_code', $_POST['cac_pro_code']);
+        }
+        
+        // Save params
+        if (isset($_POST['cac_pro_params'])) {
+            $params = json_decode(stripslashes($_POST['cac_pro_params']), true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                update_post_meta($post_id, '_cac_pro_params', $params);
+            }
+        }
+        
+        // Save response
+        if (isset($_POST['cac_pro_response'])) {
+            $response = json_decode(stripslashes($_POST['cac_pro_response']), true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                update_post_meta($post_id, '_cac_pro_response', $response);
+            }
+        }
+    }
+
+    public function register_api_endpoints() {
+        $endpoints = get_posts([
+            'post_type' => 'cac_api',
+            'posts_per_page' => -1,
+            'post_status' => 'publish'
+        ]);
+        
+        foreach ($endpoints as $endpoint) {
+            $endpoint_path = get_post_meta($endpoint->ID, '_cac_pro_endpoint', true);
+            $methods = get_post_meta($endpoint->ID, '_cac_pro_methods', true);
+            $code = get_post_meta($endpoint->ID, '_cac_pro_code', true);
+            $cache = get_post_meta($endpoint->ID, '_cac_pro_cache', true);
+            
+            if (!$endpoint_path || !$methods) {
+                continue;
+            }
+            
+            $this->register_endpoint($endpoint_path, $methods, $code, $cache, $endpoint->ID);
+        }
+    }
+
+    private function register_endpoint($path, $methods, $code, $cache, $endpoint_id) {
+        register_rest_route('cac-pro/v1', $path, [
+            'methods' => $methods,
+            'callback' => function($request) use ($code, $cache, $endpoint_id) {
+                // Check cache first
+                $cache_key = 'cac_pro_endpoint_' . $endpoint_id;
+                if ($cache > 0) {
+                    $cached = get_transient($cache_key);
+                    if ($cached !== false) {
+                        return $cached;
+                    }
+                }
+                
+                // Execute the code
+                $response = $this->execute_endpoint_code($code, $request, $endpoint_id);
+                
+                // Cache the response if needed
+                if ($cache > 0) {
+                    set_transient($cache_key, $response, $cache);
+                }
+                
+                return $e;
+            },
+            'permission_callback' => function($request) use ($endpoint_id) {
+                $access = get_post_meta($endpoint_id, '_cac_pro_access', true);
+                $roles = get_post_meta($endpoint_id, '_cac_pro_roles', true);
+                
+                if ($access === 'public') {
+                    return true;
+                }
+                
+                if (!is_user_logged_in()) {
+                    return false;
+                }
+                
+                if (empty($roles)) {
+                    return true;
+                }
+                
+                $user = wp_get_current_user();
+                return array_intersect($roles, $user->roles);
+            }
+        ]);
+    }
+
+    private function execute_endpoint_code($code, $request, $endpoint_id) {
+        // Prepare variables
+        $params = $request->get_params();
+        $headers = $request->get_headers();
+        $method = $request->get_method();
+        $body = $request->get_body();
+        $user = wp_get_current_user();
+        
+        // Create a safe execution environment
+        try {
+            // Extract helper functions from the code
+            $helper_calls = $this->extract_helper_calls($code);
+            
+            // Prepare helper functions
+            $helper_functions = '';
+            foreach ($helper_calls as $helper) {
+                if (isset($this->helpers[$helper])) {
+                    $helper_functions .= $this->helpers[$helper] . "\n";
+                }
+            }
+            
+            // Create the function
+            $function_code = "function cac_pro_endpoint_$endpoint_id(\$params, \$headers, \$method, \$body, \$user) {\n" .
+                            $helper_functions . "\n" .
+                            $code . "\n" .
+                            "}";
+            
+            // Execute the function
+            eval128($function_code);
+            $function_name = "cac_pro_endpoint_$endpoint_id";
+            $result = $function_name($params, $headers, $method, $body, $user);
+            
+            return $result;
+        } catch (Exception $e) {
+            $this->log_error('Endpoint execution error: ' . $e->getMessage());
+            return [
+                'error' => 'Internal server error',
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    private function extract_helper_calls($code) {
+        $helpers = [];
+        $pattern = '/cac_pro_helper_([a-z0-9_]+)\(/i';
+        
+        if (preg_match_all($pattern, $code, $matches)) {
+            $helpers = array_unique($matches[1]);
+        }
+        
+        return $helpers;
+    }
+
+    public function register_plugin_endpoints() {
+        // Register helper endpoints
+        register_rest_route('cac-pro/v1', '/helpers', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_helpers_list'],
+            'permission_callback' => [$this, 'check_admin_permission']
+        ]);
+        
+        register_rest_route('cac-pro/v1', '/helpers/(?P<name>[a-z0-9_]+)', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_helper_code'],
+            'permission_callback' => [$this, 'check_admin_permission']
+        ]);
+        
+        // Endpoint management
+        register_rest_route('cac-pro/v1', '/endpoints', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_endpoints_list'],
+            'permission_callback' => [$this, 'check_admin_permission']
+        ]);
+        
+        register_rest_route('cac-pro/v1', '/endpoints/(?P<id>\d+)', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_endpoint_details'],
+            'permission_callback' => [$this, 'check_admin_permission']
+        ]);
+    }
+
+    public function get_helpers_list($request) {
+        return array_keys($this->helpers);
+    }
+
+    public function get_helper_code($request) {
+        $name = $request['name'];
+        if (isset($this->helpers[$name])) {
+            return [
+                'name' => $name,
+                'code' => $this->helpers[$name]
+            ];
+        }
+        return new WP_Error('not_found', 'Helper not found', ['status' => 404]);
+    }
+
+    public function get_endpoints_list($request) {
+        $endpoints = get_posts([
+            'post_type' => 'cac_api',
+            'posts_per_page' => -1,
+            'post_status' => 'publish'
+        ]);
+        
+        $result = [];
+        foreach ($endpoints as $endpoint) {
+            $result[] = [
+                'id' => $endpoint->ID,
+                'title' => $endpoint->post_title,
+                'endpoint' => get_post_meta($endpoint->ID, '_cac_pro_endpoint', true),
+                'methods' => get_post_meta($endpoint->ID, '_cac_pro_methods', true),
+                'group' => wp_get_post_terms($endpoint->ID, 'cac_api_group', ['fields' => 'names'])
+            ];
+        }
+        
+        return $result;
+    }
+
+    public function get_endpoint_details($request) {
+        $id = $request['id'];
+        $endpoint = get_post($id);
+        
+        if (!$endpoint || $endpoint->post_type !== 'cac_api') {
+            return new WP_Error('not_found', 'Endpoint not found', ['status' => 404]);
+        }
+        
+        return [
+            'id' => $endpoint->ID,
+            'title' => $endpoint->post_title,
+            'endpoint' => get_post_meta($endpoint->ID, '_cac_pro_endpoint', true),
+            'methods' => get_post_meta($endpoint->ID, '_cac_pro_methods', true),
+            'code' => get_post_meta($endpoint->ID, '_cac_pro_code', true),
+            'params' => get_post_meta($endpoint->ID, '_cac_pro_params', true),
+            'response' => get_post_meta($endpoint->ID, '_cac_pro_response', true),
+            'access' => get_post_meta($endpoint->ID, '_cac_pro_access', true),
+            'roles' => get_post_meta($endpoint->ID, '_cac_pro_roles', true),
+            'cache' => get_post_meta($endpoint->ID, '_cac_pro_cache', true),
+            'group' => wp_get_post_terms($endpoint->ID, 'cac_api_group', ['fields' => 'names'])
+        ];
+    }
+
+    public function check_admin_permission() {
+        return current_user_can('manage_options');
+    }
+
+    public function admin_page() {
+        include plugin_dir_path(__FILE__) . 'templates/admin.php';
+    }
+
+    public function settings_page() {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+        
+        if (isset($_POST['cac_pro_settings'])) {
+            check_admin_referer('cac_pro_settings');
+            $this->save_settings($_POST);
+        }
+        
+        include plugin_dir_path(__FILE__) . 'templates/settings.php';
+    }
+public function helper_page() {
+        if (!current_user_ccan('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
+        $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : 'list';
+        $helper_id = isset($_GET['helper']) ? absint($_GET['helper']) : 0;
+
+        switch ($action) {
+            case 'add':
+                $this->render_helper_form();
+                break;
+            case 'edit':
+                $this->render_helper_form($helper_id);
+                break;
+            case 'delete':
+                $this->delete_helper($helper_id);
+                wp_redirect(admin_url('admin.php?page=cac-pro-helpers'));
+                exit;
+            default:
+                $this->list_helpers();
+        }
+    }
+
+    private function render_helper_form($helper_id = 0) {
+        $helper = $helper_id ? $this->get_helper($helper_id) : [
+            'name' => '',
+            'code' => '',
+            'description' => ''
+        ];
+
+        wp_enqueue_code_editor(['type' => 'application/x-httpd-php']);
+        wp_enqueue_script('jquery');
+        wp_enqueue_script('wp-theme-plugin-editor');
+
+        include plugin_dir_path(__FILE__) . 'templates/helper-form.php';
+    }
+
+    private function save_helper($data) {
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to perform this action.'));
+        }
+
+        $helper = [
+            'name' => sanitize_text_field($data['helper_name']),
+            'code' => wp_unslash($data['helper_code']),
+            'description' => sanitize_textarea_field($data['helper_description'])
+        ];
+
+        if (empty($helper['name'])) {
+            wp_die(__('Helper name cannot be empty.'));
+        }
+
+        if (empty($helper['code'])) {
+            wp_die(__('Helper code cannot be empty.'));
+        }
+
+        // Validate PHP syntax
+        if (!function_exists('token_get_all')) {
+            wp_die(__('PHP tokenizer extension is required to validate helper code.'));
+        }
+
+        try {
+            token_get_all('<?php ' . $helper['code']);
+        } catch (ParseError $e) {
+            wp_die(__('Invalid PHP code: ') . $e->getMessage());
+        }
+
+        $helper_id = isset($data['helper_id']) ? absint($data['helper_id']) : 0;
+
+        if ($helper_id) {
+            $this->update_helper($helper_id, $helper);
+        } else {
+            $this->add_helper($helper);
+        }
+
+        wp_redirect(admin_url('admin.php?page=cac-pro-helpers'));
+        exit;
+    }
+
+    private function add_helper($helper) {
+        global $wpdb;
+        
+        $result = $wpdb->insert(
+            $wpdb->prefix . 'cac_helpers',
+            [
+                'name' => $helper['name'],
+                'code' => $helper['code'],
+                'description' => $helper['description'],
+                'created_at' => current_time('mysql'),
+                'updated_at' => current_time('mysql')
+            ],
+            ['%s', '%s', '%s', '%s', '%s']
+        );
+
+        if (!$result) {
+            wp_die(__('Error saving helper to database.'));
+        }
+
+        $this->helper_loaded = false;
+        $this->load_helpers();
+    }
+
+    private function update_helper($helper_id, $helper) {
+        global $wpdb;
+        
+        $result = $wpdb->update(
+            $wpdb->prefix . 'cac_helpers',
+            [
+                'name' => $helper['name'],
+                'code' => $helper['code'],
+                'description' => $helper['description'],
+                'updated_at' => current_time('mysql')
+            ],
+            ['id' => $helper_id],
+            ['%s', '%s', '%s', '%s'],
+            ['%d']
+        );
+
+        if (false === $result) {
+            wp_die(__('Error updating helper in database.'));
+        }
+
+        $this->helper_loaded = false;
+        $this->load_helpers();
+    }
+
+    private function delete_helper($helper_id) {
+        global $wpdb;
+        
+        $result = $wpdb->delete(
+            $wpdb->prefix . 'cac_helpers',
+            ['id' => $helper_id],
+            ['%d']
+        );
+
+        if (!$result) {
+            wp_die(__('Error deleting helper from database.'));
+        }
+
+        $this->helper_loaded = false;
+        $this->load_helpers();
+    }
+
+    private function list_helpers() {
+        global $wpdb;
+        
+        $helpers = $wpdb->get_results(
+            "SELECT * FROM {$wpdb->prefix}cac_helpers ORDER BY name ASC"
+        );
+
+        include plugin_dir_path(__FILE__) . 'templates/helper-list.php';
+    }
+
+    private function get_helper($helper_id) {
+        global $wpdb;
+        
+        return $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}cac_helpers WHERE id = %d",
+                $helper_id
+            ),
+            ARRAY_A
+        );
+    }
+
+    private function load_helpers() {
+        if ($this->helper_loaded) {
+            return;
+        }
+
+        global $wpdb;
+        
+        $this->helpers = [];
+        $results = $wpdb->get_results("SELECT name, code FROM {$wpdb->prefix}cac_helpers");
+        
+        foreach ($results as $helper) {
+            $this->helpers[$helper->name] = $helper->code;
+        }
+
+        $this->helper_loaded = true;
+    }
+
+    private function load_settings() {
+        $this->settings = get_option('cac_pro_settings', [
+            'enable_cache' => true,
+            'cache_duration' => 3600,
+            'enable_logging' => true,
+            'log_level' => 'error'
+        ]);
+    }
+
+    private function save_settings($data) {
+        $settings = [
+            'enable_cache' => isset($data['enable_cache']),
+            'cache_duration' => absint($data['cache_duration']),
+            'enable_logging' => isset($data['enable_logging']),
+            'log_level' => in_array($data['log_level'], ['debug', 'info', 'warning', 'error']) 
+                ? $data['log_level'] 
+                : 'error'
+        ];
+
+        update_option('cac_pro_settings', $settings);
+        $this->settings = $settings;
+    }
+
+    private function log_error($message) {
+        if (!$this->settings['enable_logging']) {
+            return;
+        }
+
+        if (!file_exists($this->log_path)) {
+            wp_mkdir_p($this->log_path);
+        }
+
+        $log_file = $this->log_path . 'error.log';
+        $message = '[' . current_time('mysql') . '] ' . $message . "\n";
+        file_put_contents($log_file, $message, FILE_APPEND);
+    }
+
+    private function register_default_helpers() {
+        $this->helpers = array_merge($this->helpers, [
+            'get_post_data' => 'function get_post_data($post_id) {
+                $post = get_post($post_id);
+                if (!$post) {
+                    return false;
+                }
+                return [
+                    "id" => $post->ID,
+                    "title" => $post->post_title,
+                    "content" => $post->post_content,
+                    "excerpt" => $post->post_excerpt,
+                    "status" => $post->post_status,
+                    "date" => $post->post_date
+                ];
+            }',
+            'get_user_data' => 'function get_user_data($user_id) {
+                $user = get_user_by("id", $user_id);
+                if (!$user) {
+                    return false;
+                }
+                return [
+                    "id" => $user->ID,
+                    "username" => $user->user_login,
+                    "email" => $user->user_email,
+                    "roles" => $user->roles
+                ];
+            }',
+            'validate_email' => 'function validate_email($email) {
+                return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+            }'
+        ]);
+    }
+
+    public function activate() {
+        global $wpdb;
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        $table_name = $wpdb->prefix . 'cac_helpers';
+
+        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            name varchar(100) NOT NULL,
+            code text NOT NULL,
+            description text,
+            created_at datetime NOT NULL,
+            updated_at datetime NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY name (name)
+        ) $charset_collate;";
+
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        dbDelta($sql);
+
+        add_option('cac_pro_settings', [
+            'enable_cache' => true,
+            'cache_duration' => 3600,
+            'enable_logging' => true,
+            'log_level' => 'error'
+        ]);
+    }
+
+    public function deactivate() {
+        // Clean up on deactivation
+    }
+
+    public function uninstall() {
+        global $wpdb;
+        
+        $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}cac_helpers");
+        delete_option('cac_pro_settings');
+    }
 }
 
-new CAC_Plugin_Class();
+// Initialize the plugin
+function cac_pro_init() {
+    $GLOBALS['cac_pro'] = CAC_Plugin_Pro::get_instance();
+}
+add_action('plugins_loaded', 'cac_pro_init');
+
+// Register activation/deactivation hooks
+register_activation_hook(__FILE__, ['CAC_Plugin_Pro', 'activate']);
+register_deactivation_hook(__FILE__, ['CAC_Plugin_Proxy', 'deactivate']);
+register_uninstall_hook(__FILE__, ['CAC_Plugin_Pro', 'uninstall']);
