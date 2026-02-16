@@ -29,6 +29,10 @@ With Custom API Creator, you can define multiple API endpoints, each with its ow
 - **Automatic REST API Integration:** Your custom APIs are automatically integrated into the WordPress REST API system.
 - **Performance Optimized:** Efficiently retrieves and formats data to ensure fast API responses.
 - **Developer Friendly:** Clean code structure and hooks for easy customization and extension.
+- **Webhook Receiver:** Receive and process webhook requests with custom verification and logging.
+- **Dynamic Endpoint Slug:** Provide dynamic endpoint slugs as CPT slugs for flexible data handling.
+- **Codemirror PHP Action Function:** Use custom Codemirror PHP action function code for enhanced error debugging.
+- **Swagger and OpenAPI Modeler:** Add wp-swagger and openapi modeler for API documentation and modeling.
 
 ## Installation
 
@@ -88,6 +92,31 @@ While the plugin doesn't have built-in e-commerce fields, you can use it with e-
 
 We strive to keep Custom API Creator up-to-date with the latest WordPress versions and security best practices. Updates are released as needed for bug fixes, security patches, and new features.
 
+### How do I configure the webhook receiver?
+
+1. In your WordPress admin panel, go to "Custom API Creator" in the main menu.
+2. Click "Settings" and navigate to the "Webhook Receiver" section.
+3. Set your desired webhook secret for signature verification.
+4. Use the provided endpoint URL to configure your webhook sender.
+5. The plugin will automatically verify the webhook signature and log the request.
+
+### How do I use a dynamic endpoint slug?
+
+You can include dynamic parts in your endpoint URL using regular expressions, which is a standard feature of the WordPress REST API. For example: `my-api/users/(?P<id>\d+)`.
+
+The captured parameters (like `id` in the example) will be available in the `$request` object passed to your handler function, which you can access via `$request['id']`.
+
+### How do I use the Codemirror PHP action function?
+
+This feature enhances the 'Handler Function' text area in the API editor with syntax highlighting, line numbers, and real-time error checking (linting) for your PHP code. This makes it easier to write and debug your handler functions directly within the WordPress admin panel. It is enabled automatically on the API editing screen, so no special configuration is required.
+
+### How do I configure the Swagger and OpenAPI Modeler?
+
+1. In your WordPress admin panel, go to "Custom API Creator" in the main menu.
+2. Click "Settings" and navigate to the "Swagger and OpenAPI Modeler" section.
+3. Set your desired configuration for the Swagger and OpenAPI modeler.
+4. Use the provided endpoint URL to access the Swagger and OpenAPI documentation.
+5. The plugin will automatically generate and display the API documentation.
 ## Running Unit Tests
 
 To run the unit tests for the Custom API Creator plugin, follow these steps:

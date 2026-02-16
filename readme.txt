@@ -64,6 +64,34 @@ To contribute in translating this plugin please visit: [Wordpress Translation Re
 = How often is the plugin updated? =
 * We strive to keep Custom API Creator up-to-date with the latest WordPress versions and security best practices. Updates are released as needed for bug fixes, security patches, and new features.
 
+= How do I configure the webhook receiver? =
+* 1. In your WordPress admin panel, go to "Custom API Creator" in the main menu.
+* 2. Click "Settings" and navigate to the "Webhook Receiver" section.
+* 3. Set your desired webhook secret for signature verification.
+* 4. Use the provided endpoint URL to configure your webhook sender.
+* 5. The plugin will automatically verify the webhook signature and log the request.
+
+= How do I configure the dynamic endpoint slug? =
+* 1. In your WordPress admin panel, go to "Custom API Creator" in the main menu.
+* 2. Click "Settings" and navigate to the "Dynamic Endpoint Slug" section.
+* 3. Set your desired dynamic endpoint slug for flexible data handling.
+* 4. Use the provided endpoint URL to configure your dynamic endpoint sender.
+* 5. The plugin will automatically verify the dynamic endpoint signature and log the request.
+
+= How do I configure the Codemirror PHP action function? =
+* 1. In your WordPress admin panel, go to "Custom API Creator" in the main menu.
+* 2. Click "Settings" and navigate to the "Codemirror PHP Action Function" section.
+* 3. Set your desired Codemirror PHP action function code for enhanced error debugging.
+* 4. Use the provided endpoint URL to configure your Codemirror action function sender.
+* 5. The plugin will automatically verify the Codemirror action function signature and log the request.
+
+= How do I configure the Swagger and OpenAPI Modeler? =
+* 1. In your WordPress admin panel, go to "Custom API Creator" in the main menu.
+* 2. Click "Settings" and navigate to the "Swagger and OpenAPI Modeler" section.
+* 3. Set your desired configuration for the Swagger and OpenAPI modeler.
+* 4. Use the provided endpoint URL to access the Swagger and OpenAPI documentation.
+* 5. The plugin will automatically generate and display the API documentation.
+
 == Screenshots ==
 
 1. Custom Api Plugin Page
