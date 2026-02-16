@@ -14,6 +14,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
 class CAC_Plugin_Pro {
     private static $instance;
     private $helpers = [];
@@ -22,6 +26,7 @@ class CAC_Plugin_Pro {
     private $log_path;
     private $settings = [];
     private $api_groups = [];
+    private $helper_loaded = false;
 
     public static function get_instance() {
         if (!self::$instance) {
@@ -146,9 +151,9 @@ class CAC_Plugin_Pro {
         if ('post.php' === $hook || 'post-new.php' === $hook) {
             $screen = get_current_screen();
             if ('cac_api' === $screen->post_type) {
-                wp_enqueue_script('cac-pro-admin', plugin_dir_url(__FILE__) . 'assets/js/admin.js', ['jquery', 'wp-codemirror'], '1.0', true);
+                wp_enqueue_code_editor(['type' => 'application/x-httpd-php']);
+                wp_enqueue_script('cac-pro-admin', plugin_dir_url(__FILE__) . 'assets/js/admin.js', ['jquery', 'underscore'], '1.0', true);
                 wp_enqueue_style('cac-pro-admin', plugin_dir_url(__FILE__) . 'assets/css/admin.css', [], '1.0');
-                wp_enqueue_style('wp-codemirror');
                 
                 // Localize script with helper functions
                 wp_localize_script('cac-pro-admin', 'cacPro', [
@@ -246,7 +251,7 @@ class CAC_Plugin_Pro {
         }
         
         if (isset($_POST['cac_pro_cache'])) {
-            update_post_meta($original_post_id, '_cac_pro_cache', absint($_POST['cac_pro_cache']));
+            update_post_meta($post_id, '_cac_pro_cache', absint($_POST['cac_pro_cache']));
         }
         
         if (isset($_POST['cac_pro_group'])) {
@@ -255,7 +260,7 @@ class CAC_Plugin_Pro {
         
         // Save code
         if (isset($_POST['cac_pro_code'])) {
-            update_post_meta($post_id, '_cac_pro_code', $_POST['cac_pro_code']);
+            update_post_meta($post_id, '_cac_pro_code', wp_unslash($_POST['cac_pro_code']));
         }
         
         // Save params
@@ -317,7 +322,7 @@ class CAC_Plugin_Pro {
                     set_transient($cache_key, $response, $cache);
                 }
                 
-                return $e;
+                return $response;
             },
             'permission_callback' => function($request) use ($endpoint_id) {
                 $access = get_post_meta($endpoint_id, '_cac_pro_access', true);
@@ -349,32 +354,37 @@ class CAC_Plugin_Pro {
         $body = $request->get_body();
         $user = wp_get_current_user();
         
+        $function_name = "cac_pro_endpoint_$endpoint_id";
+
         // Create a safe execution environment
         try {
-            // Extract helper functions from the code
-            $helper_calls = $this->extract_helper_calls($code);
-            
-            // Prepare helper functions
-            $helper_functions = '';
-            foreach ($helper_calls as $helper) {
-                if (isset($this->helpers[$helper])) {
-                    $helper_functions .= $this->helpers[$helper] . "\n";
+            if (!function_exists($function_name)) {
+                // Extract helper functions from the code
+                $helper_calls = $this->extract_helper_calls($code);
+
+                // Prepare helper functions
+                $helper_functions = '';
+                foreach ($helper_calls as $helper) {
+                    if (isset($this->helpers[$helper])) {
+                        $helper_functions .= $this->helpers[$helper] . "\n";
+                    }
                 }
+
+                // Create the function
+                $eval_code = $helper_functions . "\n" .
+                             "function $function_name(\$params, \$headers, \$method, \$body, \$user) {\n" .
+                             $code . "\n" .
+                             "}";
+
+                // Execute the eval to define functions
+                eval($eval_code);
             }
             
-            // Create the function
-            $function_code = "function cac_pro_endpoint_$endpoint_id(\$params, \$headers, \$method, \$body, \$user) {\n" .
-                            $helper_functions . "\n" .
-                            $code . "\n" .
-                            "}";
-            
             // Execute the function
-            eval128($function_code);
-            $function_name = "cac_pro_endpoint_$endpoint_id";
             $result = $function_name($params, $headers, $method, $body, $user);
             
             return $result;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->log_error('Endpoint execution error: ' . $e->getMessage());
             return [
                 'error' => 'Internal server error',
@@ -385,13 +395,35 @@ class CAC_Plugin_Pro {
 
     private function extract_helper_calls($code) {
         $helpers = [];
-        $pattern = '/cac_pro_helper_([a-z0-9_]+)\(/i';
+        $pattern = '/(cac_pro_helper_[a-z0-9_]+)\(/i';
         
         if (preg_match_all($pattern, $code, $matches)) {
             $helpers = array_unique($matches[1]);
         }
         
         return $helpers;
+    }
+
+    public function custom_columns($columns) {
+        $new_columns = [];
+        $new_columns['cb'] = $columns['cb'];
+        $new_columns['title'] = $columns['title'];
+        $new_columns['endpoint'] = __('Endpoint', 'cac-pro');
+        $new_columns['methods'] = __('Methods', 'cac-pro');
+        $new_columns['date'] = $columns['date'];
+        return $new_columns;
+    }
+
+    public function custom_column_content($column, $post_id) {
+        switch ($column) {
+            case 'endpoint':
+                echo '<code>/cac-pro/v1' . get_post_meta($post_id, '_cac_pro_endpoint', true) . '</code>';
+                break;
+            case 'methods':
+                $methods = get_post_meta($post_id, '_cac_pro_methods', true);
+                echo is_array($methods) ? implode(', ', $methods) : $methods;
+                break;
+        }
     }
 
     public function register_plugin_endpoints() {
@@ -420,6 +452,69 @@ class CAC_Plugin_Pro {
             'callback' => [$this, 'get_endpoint_details'],
             'permission_callback' => [$this, 'check_admin_permission']
         ]);
+
+        register_rest_route('cac-pro/v1', '/swagger', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_swagger_json'],
+            'permission_callback' => '__return_true'
+        ]);
+    }
+
+    public function get_swagger_json() {
+        $endpoints = get_posts([
+            'post_type' => 'cac_api',
+            'posts_per_page' => -1,
+            'post_status' => 'publish'
+        ]);
+
+        $openapi = [
+            'openapi' => '3.0.0',
+            'info' => [
+                'title' => 'Custom API Pro',
+                'version' => '1.0.0',
+                'description' => 'Automatically generated API documentation'
+            ],
+            'servers' => [
+                ['url' => get_rest_url(null, 'cac-pro/v1')]
+            ],
+            'paths' => []
+        ];
+
+        foreach ($endpoints as $endpoint_post) {
+            $path = get_post_meta($endpoint_post->ID, '_cac_pro_endpoint', true);
+            $methods = get_post_meta($endpoint_post->ID, '_cac_pro_methods', true);
+            $params = get_post_meta($endpoint_post->ID, '_cac_pro_params', true);
+
+            if (!$path) continue;
+
+            $formatted_path = '/' . ltrim($path, '/');
+            $openapi['paths'][$formatted_path] = [];
+
+            foreach ((array)$methods as $method) {
+                $openapi['paths'][$formatted_path][strtolower($method)] = [
+                    'summary' => $endpoint_post->post_title,
+                    'responses' => [
+                        '200' => [
+                            'description' => 'Successful response'
+                        ]
+                    ]
+                ];
+
+                if (!empty($params) && is_array($params)) {
+                    $openapi['paths'][$formatted_path][strtolower($method)]['parameters'] = [];
+                    foreach ($params as $name => $config) {
+                        $openapi['paths'][$formatted_path][strtolower($method)]['parameters'][] = [
+                            'name' => $name,
+                            'in' => 'query', // Default to query, can be improved
+                            'required' => isset($config['required']) ? (bool)$config['required'] : false,
+                            'schema' => ['type' => 'string']
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $openapi;
     }
 
     public function get_helpers_list($request) {
@@ -501,9 +596,13 @@ class CAC_Plugin_Pro {
         
         include plugin_dir_path(__FILE__) . 'templates/settings.php';
     }
-public function helper_page() {
-        if (!current_user_ccan('manage_options')) {
+    public function helpers_page() {
+        if (!current_user_can('manage_options')) {
             wp_die(__('You do not have sufficient permissions to access this page.'));
+        }
+
+        if (isset($_POST['cac_pro_helper_nonce']) && wp_verify_nonce($_POST['cac_pro_helper_nonce'], 'cac_pro_save_helper')) {
+            $this->save_helper($_POST);
         }
 
         $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : 'list';
@@ -517,6 +616,7 @@ public function helper_page() {
                 $this->render_helper_form($helper_id);
                 break;
             case 'delete':
+                check_admin_referer('cac_pro_delete_helper');
                 $this->delete_helper($helper_id);
                 wp_redirect(admin_url('admin.php?page=cac-pro-helpers'));
                 exit;
@@ -723,34 +823,40 @@ public function helper_page() {
 
     private function register_default_helpers() {
         $this->helpers = array_merge($this->helpers, [
-            'get_post_data' => 'function get_post_data($post_id) {
-                $post = get_post($post_id);
-                if (!$post) {
-                    return false;
+            'cac_pro_helper_get_post_data' => 'if (!function_exists("cac_pro_helper_get_post_data")) {
+                function cac_pro_helper_get_post_data($post_id) {
+                    $post = get_post($post_id);
+                    if (!$post) {
+                        return false;
+                    }
+                    return [
+                        "id" => $post->ID,
+                        "title" => $post->post_title,
+                        "content" => $post->post_content,
+                        "excerpt" => $post->post_excerpt,
+                        "status" => $post->post_status,
+                        "date" => $post->post_date
+                    ];
                 }
-                return [
-                    "id" => $post->ID,
-                    "title" => $post->post_title,
-                    "content" => $post->post_content,
-                    "excerpt" => $post->post_excerpt,
-                    "status" => $post->post_status,
-                    "date" => $post->post_date
-                ];
             }',
-            'get_user_data' => 'function get_user_data($user_id) {
-                $user = get_user_by("id", $user_id);
-                if (!$user) {
-                    return false;
+            'cac_pro_helper_get_user_data' => 'if (!function_exists("cac_pro_helper_get_user_data")) {
+                function cac_pro_helper_get_user_data($user_id) {
+                    $user = get_user_by("id", $user_id);
+                    if (!$user) {
+                        return false;
+                    }
+                    return [
+                        "id" => $user->ID,
+                        "username" => $user->user_login,
+                        "email" => $user->user_email,
+                        "roles" => $user->roles
+                    ];
                 }
-                return [
-                    "id" => $user->ID,
-                    "username" => $user->user_login,
-                    "email" => $user->user_email,
-                    "roles" => $user->roles
-                ];
             }',
-            'validate_email' => 'function validate_email($email) {
-                return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+            'cac_pro_helper_validate_email' => 'if (!function_exists("cac_pro_helper_validate_email")) {
+                function cac_pro_helper_validate_email($email) {
+                    return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+                }
             }'
         ]);
     }
@@ -803,5 +909,5 @@ add_action('plugins_loaded', 'cac_pro_init');
 
 // Register activation/deactivation hooks
 register_activation_hook(__FILE__, ['CAC_Plugin_Pro', 'activate']);
-register_deactivation_hook(__FILE__, ['CAC_Plugin_Proxy', 'deactivate']);
+register_deactivation_hook(__FILE__, ['CAC_Plugin_Pro', 'deactivate']);
 register_uninstall_hook(__FILE__, ['CAC_Plugin_Pro', 'uninstall']);
