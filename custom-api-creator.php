@@ -22,6 +22,7 @@ class CAC_Plugin_Pro {
     private $log_path;
     private $settings = [];
     private $api_groups = [];
+    private $default_behavior;
 
     public static function get_instance() {
         if (!self::$instance) {
@@ -198,6 +199,7 @@ class CAC_Plugin_Pro {
         $cache = get_post_meta($post->ID, '_cac_pro_cache', true) ?: 0;
         $group = wp_get_post_terms($post->ID, 'cac_api_group', ['fields' => 'slugs']);
         $group = !empty($group) ? $group[0] : '';
+        $behavior = get_post_meta($post->ID, '_cac_pro_behavior', true) ?: $this->default_behavior;
         
         include plugin_dir_path(__FILE__) . 'templates/endpoint-details.php';
     }
@@ -253,6 +255,10 @@ class CAC_Plugin_Pro {
             wp_set_post_terms($post_id, sanitize_text_field($_POST['cac_pro_group']), 'cac_api_group');
         }
         
+        if (isset($_POST['behavior_selection'])) {
+            update_post_meta($post_id, '_cac_pro_behavior', sanitize_text_field($_POST['behavior_selection']));
+        }
+        
         // Save code
         if (isset($_POST['cac_pro_code'])) {
             update_post_meta($post_id, '_cac_pro_code', $_POST['cac_pro_code']);
@@ -287,19 +293,20 @@ class CAC_Plugin_Pro {
             $methods = get_post_meta($endpoint->ID, '_cac_pro_methods', true);
             $code = get_post_meta($endpoint->ID, '_cac_pro_code', true);
             $cache = get_post_meta($endpoint->ID, '_cac_pro_cache', true);
+            $behavior = get_post_meta($endpoint->ID, '_cac_pro_behavior', true) ?: $this->default_behavior;
             
             if (!$endpoint_path || !$methods) {
                 continue;
             }
             
-            $this->register_endpoint($endpoint_path, $methods, $code, $cache, $endpoint->ID);
+            $this->register_endpoint($endpoint_path, $methods, $code, $cache, $endpoint->ID, $behavior);
         }
     }
 
-    private function register_endpoint($path, $methods, $code, $cache, $endpoint_id) {
+    private function register_endpoint($path, $methods, $code, $cache, $endpoint_id, $behavior) {
         register_rest_route('cac-pro/v1', $path, [
             'methods' => $methods,
-            'callback' => function($request) use ($code, $cache, $endpoint_id) {
+            'callback' => function($request) use ($code, $cache, $endpoint_id, $behavior) {
                 // Check cache first
                 $cache_key = 'cac_pro_endpoint_' . $endpoint_id;
                 if ($cache > 0) {
@@ -310,14 +317,14 @@ class CAC_Plugin_Pro {
                 }
                 
                 // Execute the code
-                $response = $this->execute_endpoint_code($code, $request, $endpoint_id);
+                $response = $this->execute_endpoint_code($code, $request, $endpoint_id, $behavior);
                 
                 // Cache the response if needed
                 if ($cache > 0) {
                     set_transient($cache_key, $response, $cache);
                 }
                 
-                return $e;
+                return $response;
             },
             'permission_callback' => function($request) use ($endpoint_id) {
                 $access = get_post_meta($endpoint_id, '_cac_pro_access', true);
@@ -341,7 +348,7 @@ class CAC_Plugin_Pro {
         ]);
     }
 
-    private function execute_endpoint_code($code, $request, $endpoint_id) {
+    private function execute_endpoint_code($code, $request, $endpoint_id, $behavior) {
         // Prepare variables
         $params = $request->get_params();
         $headers = $request->get_headers();
@@ -363,7 +370,7 @@ class CAC_Plugin_Pro {
             }
             
             // Create the function
-            $function_code = "function cac_pro_endpoint_$endpoint_id(\$params, \$headers, \$method, \$body, \$user) {\n" .
+            $function_code = "function cac_pro_endpoint_$endpoint_id(\$params, \$headers, \$method, \$body, \$user, \$behavior) {\n" .
                             $helper_functions . "\n" .
                             $code . "\n" .
                             "}";
@@ -371,7 +378,7 @@ class CAC_Plugin_Pro {
             // Execute the function
             eval128($function_code);
             $function_name = "cac_pro_endpoint_$endpoint_id";
-            $result = $function_name($params, $headers, $method, $body, $user);
+            $result = $function_name($params, $headers, $method, $body, $user, $behavior);
             
             return $result;
         } catch (Exception $e) {
@@ -477,7 +484,8 @@ class CAC_Plugin_Pro {
             'access' => get_post_meta($endpoint->ID, '_cac_pro_access', true),
             'roles' => get_post_meta($endpoint->ID, '_cac_pro_roles', true),
             'cache' => get_post_meta($endpoint->ID, '_cac_pro_cache', true),
-            'group' => wp_get_post_terms($endpoint->ID, 'cac_api_group', ['fields' => 'names'])
+            'group' => wp_get_post_terms($endpoint->ID, 'cac_api_group', ['fields' => 'names']),
+            'behavior' => get_post_meta($endpoint->ID, '_cac_pro_behavior', true) ?: $this->default_behavior
         ];
     }
 
@@ -691,6 +699,7 @@ public function helper_page() {
             'enable_logging' => true,
             'log_level' => 'error'
         ]);
+        $this->default_behavior = get_option('cac_pro_default_behavior', 'new');
     }
 
     private function save_settings($data) {
@@ -705,6 +714,11 @@ public function helper_page() {
 
         update_option('cac_pro_settings', $settings);
         $this->settings = $settings;
+
+        if (isset($data['cac_pro_default_behavior'])) {
+            update_option('cac_pro_default_behavior', sanitize_text_field($data['cac_pro_default_behavior']));
+            $this->default_behavior = sanitize_text_field($data['cac_pro_default_behavior']);
+        }
     }
 
     private function log_error($message) {
@@ -781,6 +795,7 @@ public function helper_page() {
             'enable_logging' => true,
             'log_level' => 'error'
         ]);
+        add_option('cac_pro_default_behavior', 'new');
     }
 
     public function deactivate() {
@@ -792,6 +807,7 @@ public function helper_page() {
         
         $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}cac_helpers");
         delete_option('cac_pro_settings');
+        delete_option('cac_pro_default_behavior');
     }
 }
 

@@ -104,8 +104,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</th>
 			<td>
 				<select name="behavior_selection" id="behavior_selection">
-					<option value="new"><?php esc_html_e( 'New Functionality', 'cac-pro' ); ?></option>
-					<option value="old"><?php esc_html_e( 'Old Behavior', 'cac-pro' ); ?></option>
+					<option value="new" <?php selected( 'new', $behavior ); ?>><?php esc_html_e( 'New Functionality', 'cac-pro' ); ?></option>
+					<option value="old" <?php selected( 'old', $behavior ); ?>><?php esc_html_e( 'Old Behavior', 'cac-pro' ); ?></option>
 				</select>
 			</td>
 		</tr>

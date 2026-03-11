@@ -29,6 +29,7 @@ With Custom API Creator, you can define multiple API endpoints, each with its ow
 - **Automatic REST API Integration:** Your custom APIs are automatically integrated into the WordPress REST API system.
 - **Performance Optimized:** Efficiently retrieves and formats data to ensure fast API responses.
 - **Developer Friendly:** Clean code structure and hooks for easy customization and extension.
+- **Behavior Selection:** Choose between old and new behavior for your API endpoints.
 - **Webhook Receiver:** Receive and process webhook requests with custom verification and logging.
 - **Dynamic Endpoint Slug:** Provide dynamic endpoint slugs as CPT slugs for flexible data handling.
 - **Codemirror PHP Action Function:** Use custom Codemirror PHP action function code for enhanced error debugging.
