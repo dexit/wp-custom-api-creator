@@ -100,19 +100,23 @@ jQuery(document).ready(function ($) {
 		}
 	});
 
-	// Add a dropdown menu in the UI to select between the old behavior and the new functionality
-	var behaviorDropdown = $('<select id="behavior_selection"><option value="new">New Functionality</option><option value="old">Old Behavior</option></select>');
-	$("#api_sections").before(behaviorDropdown);
-
-	// Update the JavaScript to handle the dropdown selection and apply the corresponding behavior
-	$("#behavior_selection").on("change", function () {
-		var selectedBehavior = $(this).val();
-		if (selectedBehavior === "old") {
-			// Implement the old behavior from the original script
-			// Add your old behavior code here
-		} else {
-			// Implement the new functionality
-			// Add your new functionality code here
-		}
-	});
+	// Custom CodeMirror PHP action function code for error debugging
+	if (typeof wp !== 'undefined' && wp.codeEditor) {
+		var editorSettings = wp.codeEditor.defaultSettings ? _.clone(wp.codeEditor.defaultSettings) : {};
+		editorSettings.codemirror = _.extend(
+			{},
+			editorSettings.codemirror,
+			{
+				mode: 'php',
+				indentUnit: 2,
+				tabSize: 2,
+				lineNumbers: true,
+				matchBrackets: true,
+				autoCloseBrackets: true,
+				lint: true,
+				gutters: ["CodeMirror-lint-markers"]
+			}
+		);
+		var editor = wp.codeEditor.initialize($('#cac_plugin_action_function'), editorSettings);
+	}
 });
